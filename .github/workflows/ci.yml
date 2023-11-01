@@ -1,5 +1,4 @@
 name: CI
-
 on:
   push:
     # Avoid duplicate builds on PRs.
