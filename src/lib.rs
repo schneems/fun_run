@@ -680,3 +680,28 @@ mod test_readme {
 
     external_doc_test!(include_str!("../README.md"));
 }
+
+#[cfg(test)]
+mod tests {
+
+    #[test]
+    #[cfg(feature = "which_problem")]
+    fn test_io_error_annotation() {
+        use super::*;
+
+        let io_error = std::io::Error::new(
+            std::io::ErrorKind::NotFound,
+            "Zoinks, I couldn't find that ",
+        );
+        let wrapped: std::io::Error = IoErrorAnnotation::new(
+            io_error,
+            String::from("Debug details: it's just a villan in a mask"),
+        )
+        .into_io_error();
+
+        assert_eq!(
+            "Zoinks, I couldn't find that \nDebug details: it's just a villan in a mask",
+            &format!("{wrapped}")
+        );
+    }
+}
