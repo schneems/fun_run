@@ -23,7 +23,7 @@ pub(crate) fn output_and_write_streams<OW: Write + Send, EW: Write + Send>(
         let stdout_thread = mem::take(&mut child.stdout).map(|mut child_stdout| {
             scope.spawn(move || std::io::copy(&mut child_stdout, &mut stdout))
         });
-        let stderr_thread = mem::take(&mut child.stdout).map(|mut child_stderr| {
+        let stderr_thread = mem::take(&mut child.stderr).map(|mut child_stderr| {
             scope.spawn(move || std::io::copy(&mut child_stderr, &mut stderr))
         });
 
@@ -56,11 +56,12 @@ pub(crate) fn output_and_write_streams<OW: Write + Send, EW: Write + Send>(
 #[cfg(test)]
 mod test {
     use super::*;
+    use pretty_assertions::assert_str_eq;
     use std::process::Command;
 
     #[test]
     #[cfg(unix)]
-    fn test_output_and_write_streams() {
+    fn test_output_and_write_streams_stdout() {
         let mut stdout_buf = Vec::new();
         let mut stderr_buf = Vec::new();
 
@@ -75,6 +76,20 @@ mod test {
         assert_eq!(output.status.code(), Some(0));
         assert_eq!(output.stdout, "Hello World!".as_bytes());
         assert_eq!(output.stderr, Vec::<u8>::new());
+    }
+
+    #[test]
+    #[cfg(unix)]
+    fn test_output_and_write_streams_stderr() {
+        let mut stdout_buf = Vec::new();
+        let mut stderr_buf = Vec::new();
+
+        let mut cmd = Command::new("bash");
+        cmd.args(["-c", "echo -n Hello World! >&2"]);
+
+        let _ = output_and_write_streams(&mut cmd, &mut stdout_buf, &mut stderr_buf).unwrap();
+
+        assert_str_eq!(&String::from_utf8_lossy(&stderr_buf), "Hello World!");
     }
 }
 
