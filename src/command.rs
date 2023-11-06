@@ -53,6 +53,34 @@ pub(crate) fn output_and_write_streams<OW: Write + Send, EW: Write + Send>(
     })
 }
 
+/// Constructs a writer that writes to two other writers. Similar to the UNIX `tee` command.
+pub(crate) fn tee<A: io::Write, B: io::Write>(a: A, b: B) -> TeeWrite<A, B> {
+    TeeWrite {
+        inner_a: a,
+        inner_b: b,
+    }
+}
+
+/// A tee writer that was created with the [`tee`] function.
+#[derive(Debug, Clone)]
+pub(crate) struct TeeWrite<A: io::Write, B: io::Write> {
+    inner_a: A,
+    inner_b: B,
+}
+
+impl<A: io::Write, B: io::Write> io::Write for TeeWrite<A, B> {
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        self.inner_a.write_all(buf)?;
+        self.inner_b.write_all(buf)?;
+        Ok(buf.len())
+    }
+
+    fn flush(&mut self) -> io::Result<()> {
+        self.inner_a.flush()?;
+        self.inner_b.flush()
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -90,33 +118,5 @@ mod test {
         let _ = output_and_write_streams(&mut cmd, &mut stdout_buf, &mut stderr_buf).unwrap();
 
         assert_str_eq!(&String::from_utf8_lossy(&stderr_buf), "Hello World!");
-    }
-}
-
-/// Constructs a writer that writes to two other writers. Similar to the UNIX `tee` command.
-pub(crate) fn tee<A: io::Write, B: io::Write>(a: A, b: B) -> TeeWrite<A, B> {
-    TeeWrite {
-        inner_a: a,
-        inner_b: b,
-    }
-}
-
-/// A tee writer that was created with the [`tee`] function.
-#[derive(Debug, Clone)]
-pub(crate) struct TeeWrite<A: io::Write, B: io::Write> {
-    inner_a: A,
-    inner_b: B,
-}
-
-impl<A: io::Write, B: io::Write> io::Write for TeeWrite<A, B> {
-    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        self.inner_a.write_all(buf)?;
-        self.inner_b.write_all(buf)?;
-        Ok(buf.len())
-    }
-
-    fn flush(&mut self) -> io::Result<()> {
-        self.inner_a.flush()?;
-        self.inner_b.flush()
     }
 }
