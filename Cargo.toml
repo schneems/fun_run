@@ -15,3 +15,6 @@ regex = "1"
 
 [features]
 which_problem = ["dep:which_problem"]
+
+[dev-dependencies]
+pretty_assertions = "1"
