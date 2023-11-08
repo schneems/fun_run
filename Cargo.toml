@@ -5,6 +5,10 @@ edition = "2021"
 license = "MIT"
 description = "The fun way to run your Rust Comand"
 keywords = ["command", "execute", "run", "stream", "CLI"]
+repository = "https://github.com/schneems/fun_run"
+documentation = "https://docs.rs/fun_run"
+readme = "README.md"
+include = ["src/**/*", "LICENSE", "README.md"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
