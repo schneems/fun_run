@@ -1,5 +1,9 @@
 ## Unreleased
 
+## 0.1.3
+
+- Update docs on crates.io (https://github.com/schneems/fun_run/pull/7)
+
 ## 0.1.2
 
 - Add metadata for crates.io (https://github.com/schneems/fun_run/pull/5)
