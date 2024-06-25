@@ -1,5 +1,9 @@
 ## Unreleased
 
+## 0.2.0
+
+- Add `std::error::Error` trait to `CmdError` (https://github.com/schneems/fun_run/pull/8)
+
 ## 0.1.3
 
 - Update docs on crates.io (https://github.com/schneems/fun_run/pull/7)
