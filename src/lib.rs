@@ -356,6 +356,15 @@ impl Display for CmdError {
     }
 }
 
+impl std::error::Error for CmdError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            CmdError::SystemError(_, io_err) => Some(io_err),
+            CmdError::NonZeroExitNotStreamed(_) | CmdError::NonZeroExitAlreadyStreamed(_) => None,
+        }
+    }
+}
+
 impl CmdError {
     /// Returns a display representation of the command that failed
     ///
