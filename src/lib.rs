@@ -14,7 +14,6 @@ use which_problem::Which;
 
 mod command;
 
-///
 /// Rename your commands:
 ///
 /// ```no_run
@@ -71,17 +70,58 @@ mod command;
 ///      }
 ///  }
 /// ```
-
 pub trait CommandWithName {
+    /// Returns the desired display name of the command
     fn name(&mut self) -> String;
+
+    /// Returns a reference to `&mut Command`
+    ///
+    /// This is useful for passing to other libraries.
     fn mut_cmd(&mut self) -> &mut Command;
 
+    /// Rename a command via a given string
+    ///
+    /// This can be useful if a part of the command is distracting or surprising or if you
+    /// desire to include additional information such as displaying environment variables.
+    ///
+    /// Alternatively see [CommandWithName::named_fn]
+    ///
+    /// Example:
+    ///
+    /// ```
+    /// use fun_run::CommandWithName;
+    ///
+    /// let mut command = std::process::Command::new("bin/bundle");
+    /// command.arg("install");
+    /// command.arg("--no-doc");
+    ///
+    /// let mut cmd = command.named("bundle install");
+    /// assert_eq!("bundle install", cmd.name());
+    /// ```
     fn named(&mut self, s: impl AsRef<str>) -> NamedCommand<'_> {
         let name = s.as_ref().to_string();
         let command = self.mut_cmd();
         NamedCommand { name, command }
     }
 
+    /// Rename a command via a given function
+    ///
+    /// This can be useful if a part of the command is distracting or surprising or if you
+    /// desire to include additional information such as displaying environment variables.
+    ///
+    /// Alternatively see [CommandWithName::named]
+    ///
+    /// Example:
+    ///
+    /// ```
+    /// use fun_run::CommandWithName;
+    ///
+    /// let mut command = std::process::Command::new("bundle");
+    /// command.arg("install");
+    ///
+    /// let mut cmd = command.named_fn(|cmd| cmd.name().replace("bundle", "bin/bundle").to_string());
+    /// assert_eq!("bin/bundle install", cmd.name());
+    /// ```
     #[allow(clippy::needless_lifetimes)]
     fn named_fn<'a>(&'a mut self, f: impl FnOnce(&mut Command) -> String) -> NamedCommand<'a> {
         let cmd = self.mut_cmd();
@@ -146,6 +186,12 @@ impl CommandWithName for Command {
 }
 
 /// It's a command, with a name
+///
+/// This struct allows us to re-name an existing [Command] via the [CommandWithName] trait associated
+/// functions. When one of those functions such as [CommandWithName::named_fn] or [CommandWithName::named]
+/// are called, Rust needs somewhere for the new name string to live, so we move it over into this struct
+/// which also implements [CommandWithName]. You can gain access to the original [Command] reference
+/// via `CommandWithName::mut_cmd`
 pub struct NamedCommand<'a> {
     name: String,
     command: &'a mut Command,
@@ -172,6 +218,14 @@ pub struct NamedOutput {
 }
 
 impl NamedOutput {
+    /// Check status and convert into an error if nonzero (include output in error)
+    ///
+    /// Because the [NamedOutput] does not contain information about whether it was originally
+    /// streamed or not, use this associated function when the output has not been made
+    /// available to the user. This has the effect of showing it in the event of [CmdError].
+    ///
+    /// If the output was streamed to the user use [NamedOutput::nonzero_streamed]
+    ///
     /// # Errors
     ///
     /// Returns an error if the status is not zero
@@ -179,6 +233,15 @@ impl NamedOutput {
         nonzero_captured(self.name, self.output)
     }
 
+    /// Check status and convert into an error if nonzero (hide output in error)
+    ///
+    /// Because the [NamedOutput] does not contain information about whether it was originally
+    /// streamed or not, use this associated function when the output has was streamed to the user.
+    /// This has the effect of hiding the output in the event of [CmdError] to prevent including
+    /// duplicate information twice.
+    ///
+    /// If the output was not streamed to the user use [NamedOutput::nonzero_captured]
+    ///
     /// # Errors
     ///
     /// Returns an error if the status is not zero
@@ -186,36 +249,43 @@ impl NamedOutput {
         nonzero_streamed(self.name, self.output)
     }
 
+    /// Return the ExitStatus of the output
     #[must_use]
     pub fn status(&self) -> &ExitStatus {
         &self.output.status
     }
 
+    /// Return raw stdout
     #[must_use]
     pub fn stdout(&self) -> &Vec<u8> {
         &self.output.stdout
     }
 
+    /// Return raw stderr
     #[must_use]
     pub fn stderr(&self) -> &Vec<u8> {
         &self.output.stderr
     }
 
+    /// Return lossy stdout as a String
     #[must_use]
     pub fn stdout_lossy(&self) -> String {
         String::from_utf8_lossy(&self.output.stdout).to_string()
     }
 
+    /// Return lossy stderr as a String
     #[must_use]
     pub fn stderr_lossy(&self) -> String {
         String::from_utf8_lossy(&self.output.stderr).to_string()
     }
 
+    /// Return name of the command that was run
     #[must_use]
     pub fn name(&self) -> String {
         self.name.clone()
     }
 
+    /// Return reference of the original [Output]
     #[must_use]
     pub fn output(&self) -> &Output {
         &self.output
