@@ -1,5 +1,7 @@
 ## Unreleased
 
+## 0.3.0
+
 - Add `NamedOutput::output()` which returns `&Output`. (https://github.com/schneems/fun_run/pull/10)
 - Add `impl From<&NamedOutput> for &Output` in addition to the existing `impl From<NamedOutput> for Output`. (https://github.com/schneems/fun_run/pull/10)
 - Add `NamedOutput::stdout()` and `stderr()` to return references to the original `Vec<u8>`. This is in addition to `stdout_lossy` and `stderr_lossy` functions that return `String`. (https://github.com/schneems/fun_run/pull/10)
