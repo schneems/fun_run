@@ -192,6 +192,16 @@ impl NamedOutput {
     }
 
     #[must_use]
+    pub fn stdout(&self) -> &Vec<u8> {
+        &self.output.stdout
+    }
+
+    #[must_use]
+    pub fn stderr(&self) -> &Vec<u8> {
+        &self.output.stderr
+    }
+
+    #[must_use]
     pub fn stdout_lossy(&self) -> String {
         String::from_utf8_lossy(&self.output.stdout).to_string()
     }
@@ -205,11 +215,22 @@ impl NamedOutput {
     pub fn name(&self) -> String {
         self.name.clone()
     }
+
+    #[must_use]
+    pub fn output(&self) -> &Output {
+        &self.output
+    }
 }
 
 impl AsRef<Output> for NamedOutput {
     fn as_ref(&self) -> &Output {
         &self.output
+    }
+}
+
+impl<'a> From<&'a NamedOutput> for &'a Output {
+    fn from(value: &'a NamedOutput) -> Self {
+        &value.output
     }
 }
 
@@ -390,6 +411,19 @@ impl CmdError {
             CmdError::NonZeroExitNotStreamed(out) | CmdError::NonZeroExitAlreadyStreamed(out) => {
                 out.name.as_str().into()
             }
+        }
+    }
+
+    /// Returns the OS [ExitStatus] if one was provided
+    ///
+    /// If the command failed and no error can be produced a default non-zero value will be returned
+    pub fn status(&self) -> ExitStatus {
+        match self {
+            CmdError::SystemError(_, error) => {
+                ExitStatus::from_raw(error.raw_os_error().unwrap_or(-1))
+            }
+            CmdError::NonZeroExitNotStreamed(named_output) => named_output.status().to_owned(),
+            CmdError::NonZeroExitAlreadyStreamed(named_output) => named_output.status().to_owned(),
         }
     }
 }
