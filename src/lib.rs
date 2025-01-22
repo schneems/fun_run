@@ -1,7 +1,7 @@
 #![doc = include_str!("../README.md")]
 
 use command::output_and_write_streams;
-use lazy_static::lazy_static;
+use regex::Regex;
 use std::ffi::OsString;
 use std::fmt::Display;
 use std::io::Write;
@@ -9,6 +9,7 @@ use std::os::unix::process::ExitStatusExt;
 use std::process::Command;
 use std::process::ExitStatus;
 use std::process::Output;
+use std::sync::LazyLock;
 #[cfg(feature = "which_problem")]
 use which_problem::Which;
 
@@ -310,10 +311,9 @@ impl From<NamedOutput> for Output {
     }
 }
 
-lazy_static! {
-    // https://github.com/jimmycuadra/rust-shellwords/blob/d23b853a850ceec358a4137d5e520b067ddb7abc/src/lib.rs#L23
-    static ref QUOTE_ARG_RE: regex::Regex = regex::Regex::new(r"([^A-Za-z0-9_\-.,:/@\n])").expect("Internal error:");
-}
+// https://github.com/jimmycuadra/rust-shellwords/blob/d23b853a850ceec358a4137d5e520b067ddb7abc/src/lib.rs#L23
+static QUOTE_ARG_RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"([^A-Za-z0-9_\-.,:/@\n])").expect("clippy checked"));
 
 /// Converts a command and its arguments into a user readable string
 ///
