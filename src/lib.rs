@@ -186,6 +186,16 @@ impl CommandWithName for Command {
     }
 }
 
+impl CommandWithName for &mut Command {
+    fn name(&mut self) -> String {
+        crate::display(self)
+    }
+
+    fn mut_cmd(&mut self) -> &mut Command {
+        self
+    }
+}
+
 /// It's a command, with a name
 ///
 /// This struct allows us to re-name an existing [Command] via the [CommandWithName] trait associated

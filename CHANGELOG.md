@@ -1,5 +1,9 @@
 ## Unreleased
 
+## 0.4.0
+
+- Add `impl CommandWithName for &mut Command` in addition to `Command` (https://github.com/schneems/fun_run/pull/12)
+
 ## 0.3.0
 
 - Add `NamedOutput::output()` which returns `&Output`. (https://github.com/schneems/fun_run/pull/10)
