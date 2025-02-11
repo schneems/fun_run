@@ -1,5 +1,7 @@
 ## Unreleased
 
+## 0.5.0
+
 - Add `impl CommandWithName for &mut NamedCommand` in addition to `NamedCommand` (https://github.com/schneems/fun_run/pull/14)
 
 ## 0.4.0
