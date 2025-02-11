@@ -218,6 +218,16 @@ impl CommandWithName for NamedCommand<'_> {
     }
 }
 
+impl CommandWithName for &mut NamedCommand<'_> {
+    fn name(&mut self) -> String {
+        self.name.to_string()
+    }
+
+    fn mut_cmd(&mut self) -> &mut Command {
+        self.command
+    }
+}
+
 /// Holds a the `Output` of a command's execution along with it's "name"
 ///
 /// When paired with `CmdError` a `Result<NamedOutput, CmdError>` will retain the
