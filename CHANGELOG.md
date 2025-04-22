@@ -1,5 +1,9 @@
 ## Unreleased
 
+## 0.6.0
+
+- Add `impl<'a> From<&'a mut Command> for NamedCommand<'a>` to construct a `NamedCommand` from a regular command reference without renaming it. This is useful when "shortening" names of commands (https://github.com/schneems/fun_run/pull/15)
+
 ## 0.5.0
 
 - Add `impl CommandWithName for &mut NamedCommand` in addition to `NamedCommand` (https://github.com/schneems/fun_run/pull/14)
