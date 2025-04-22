@@ -208,6 +208,52 @@ pub struct NamedCommand<'a> {
     command: &'a mut Command,
 }
 
+impl<'a> From<&'a mut Command> for NamedCommand<'a> {
+    /// Convert a [Command] reference into a [NamedCommand]
+    ///
+    /// Useful to "shorten" a command (to hide additional/unexpected flags).
+    ///
+    /// ```
+    /// use fun_run::{NamedCommand, CommandWithName};
+    ///
+    /// let mut command = std::process::Command::new("go");
+    /// let mut short: NamedCommand = command
+    ///     .args(["list", "-tags", "heroku"])
+    ///     .into();
+    ///
+    /// short
+    ///     .mut_cmd()
+    ///     .args([
+    ///         "-f",
+    ///         "{{ if eq .Name \"main\" }}{{ .ImportPath }}{{ end }}",
+    ///         "./...",
+    ///     ]);
+    ///
+    /// // Short name
+    /// assert_eq!("go list -tags heroku", &short.name());
+    /// // Full args
+    /// assert_eq!("go", short.mut_cmd().get_program().to_str().unwrap());
+    /// assert_eq!(
+    ///     "list -tags heroku -f {{ if eq .Name \"main\" }}{{ .ImportPath }}{{ end }} ./...",
+    ///     short
+    ///         .mut_cmd()
+    ///         .get_args()
+    ///         .map(|arg| arg.to_str().unwrap())
+    ///         .collect::<Vec<&str>>()
+    ///         .join(" ")
+    /// );
+    /// ```
+    fn from(command: &'a mut Command) -> Self {
+        // Eventually we can deprecate `CommandWithName::named(String)` and change it
+        // to `CommandWithName::rename(String)` and then have `CommandWithName::named()`
+        // return a NamedCommand for better ergonomics
+        NamedCommand {
+            name: command.name(),
+            command,
+        }
+    }
+}
+
 impl CommandWithName for NamedCommand<'_> {
     fn name(&mut self) -> String {
         self.name.to_string()
