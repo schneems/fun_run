@@ -55,3 +55,17 @@ jobs:
         uses: Swatinem/rust-cache@v2.7.1
       - name: Run unit tests
         run: cargo test --all-features
+
+  readme-updated:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+      - name: Update Rust toolchain
+        run: rustup update
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v2.8.1
+      - name: Install cargo readme
+        run: cargo install cargo-rdme
+      - name: Check if README.md is up-to-date (see README.md for updating instructions)
+        run: cargo rdme --check
