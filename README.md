@@ -295,13 +295,13 @@ cmd.output()
 
 Here's some fun functions you can use to help you run:
 
-- [`on_system_error`] - Convert `std::io::Error` into `CmdError`
-- [`nonzero_streamed`] - Produces a `NamedOutput` from `Output` that has already been streamd to
+- [`on_system_error`](https://docs.rs/fun_run/latest/fun_run/fn.on_system_error.html) - Convert `std::io::Error` into `CmdError`
+- [`nonzero_streamed`](https://docs.rs/fun_run/latest/fun_run/fn.nonzero_streamed.html) - Produces a `NamedOutput` from `Output` that has already been streamd to
   the user
-- [`nonzero_captured`] - Like `nonzero_streamed` but for when the user hasn't already seen the
+- [`nonzero_captured`](https://docs.rs/fun_run/latest/fun_run/fn.nonzero_captured.html) - Like `nonzero_streamed` but for when the user hasn't already seen the
   output
-- [`display`] - Converts an `&mut Command` into a human readable string
-- [`display_with_env_keys`] - Like `display` but selectively shows environment variables.
+- [`display`](https://docs.rs/fun_run/latest/fun_run/fn.display.html) - Converts an `&mut Command` into a human readable string
+- [`display_with_env_keys`](https://docs.rs/fun_run/latest/fun_run/fn.display_with_env_keys.html) - Like `display` but selectively shows environment variables.
 
 ## Async
 
