@@ -593,6 +593,42 @@ pub struct NamedOutput {
 }
 
 impl NamedOutput {
+    /// Builds a synthetic [NamedOutput] from parts, without running a process.
+    ///
+    /// This is intended for tests that need to exercise code which inspects a
+    /// [NamedOutput] or [CmdError] (for example error-classification logic keyed on a
+    /// command's exit code or stderr) without the awkwardness of spawning a real process
+    /// to produce the desired output. Pair it with [NamedOutput::nonzero_captured] or
+    /// [NamedOutput::nonzero_streamed] to obtain a [CmdError].
+    ///
+    /// ```
+    /// use fun_run::NamedOutput;
+    ///
+    /// let error = NamedOutput::for_test("npm ci", 1, "", "npm error code EALLOWGIT")
+    ///     .nonzero_captured()
+    ///     .expect_err("a non-zero exit code is an error");
+    /// assert_eq!(error.status().code(), Some(1));
+    /// ```
+    #[must_use]
+    pub fn for_test(
+        name: impl Into<String>,
+        exit_code: i32,
+        stdout: impl Into<Vec<u8>>,
+        stderr: impl Into<Vec<u8>>,
+    ) -> NamedOutput {
+        NamedOutput {
+            name: name.into(),
+            output: Output {
+                // `ExitStatusExt::from_raw` expects a raw wait status, where the exit code
+                // occupies the high byte, so shift the code into place to make
+                // `ExitStatus::code()` return it.
+                status: ExitStatus::from_raw(exit_code << 8),
+                stdout: stdout.into(),
+                stderr: stderr.into(),
+            },
+        }
+    }
+
     /// Check status and convert into an error if nonzero (include output in error)
     ///
     /// Because the [NamedOutput] does not contain information about whether it was originally
@@ -1072,5 +1108,32 @@ impl std::error::Error for IoErrorAnnotation {
 
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         Some(&self.source)
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    #[cfg(unix)]
+    fn for_test_builds_named_output_from_parts() {
+        let output = NamedOutput::for_test("npm ci", 1, "out", "boom");
+
+        assert_eq!(output.name(), "npm ci");
+        assert_eq!(output.status().code(), Some(1));
+        assert_eq!(output.stdout_lossy(), "out");
+        assert_eq!(output.stderr_lossy(), "boom");
+    }
+
+    #[test]
+    #[cfg(unix)]
+    fn for_test_nonzero_converts_into_error() {
+        let error = NamedOutput::for_test("npm ci", 1, "", "boom")
+            .nonzero_captured()
+            .expect_err("a non-zero exit code should produce a CmdError");
+
+        assert!(matches!(error, CmdError::NonZeroExitNotStreamed(_)));
+        assert_eq!(error.status().code(), Some(1));
     }
 }

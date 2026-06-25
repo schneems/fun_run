@@ -1,5 +1,6 @@
 ## Unreleased
 
+- Add `NamedOutput::for_test` to construct a synthetic `NamedOutput` without running a process. Useful for testing code that inspects a `NamedOutput`/`CmdError` (https://github.com/schneems/fun_run/pull/22)
 - Update documentation (https://github.com/schneems/fun_run/pull/16)
 
 ## 0.6.0
