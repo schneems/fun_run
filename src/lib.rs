@@ -581,6 +581,60 @@ impl CommandWithName for &mut NamedCommand<'_> {
     }
 }
 
+/// Extension trait for `Output` to generate `NamedOutput`
+///
+/// The primary use case is exercising a function that takes [`NamedOutput`] in its arguments in a test.
+///
+/// ## Example
+///
+/// ```
+/// use fun_run::OutputWithName;
+///
+/// let output = std::process::Output {
+///     status: std::process::ExitStatus::default(),
+///     stdout: Vec::new(),
+///     stderr: Vec::new()
+/// };
+///
+/// let named: fun_run::NamedOutput = output.named("exit 0");
+/// assert_eq!(String::from("exit 0"), named.name());
+/// ```
+///
+/// For generating an [`Output`] with a non-zero status on Unix you can use [`std::os::unix::process::ExitStatusExt::from_raw`]
+/// which needs to be bit shifted by 8 bits to get the same status code back:
+///
+/// ```
+/// use fun_run::OutputWithName;
+/// use std::os::unix::process::ExitStatusExt;
+///
+/// // The `ExitStatus::from_raw` input is expected to come from `wait` https://pubs.opengroup.org/onlinepubs/9799919799/functions/wait.html
+/// // with `WEXITSTATUS` being the code we care about so it needs to be shifted by 8 bits.
+/// let output = std::process::Output {
+///     status: std::process::ExitStatus::from_raw(42 << 8),
+///     stdout: Vec::new(),
+///     stderr: Vec::new()
+/// };
+///
+/// assert_eq!(42, output.status.code().unwrap());
+///
+/// let named: fun_run::NamedOutput = output.named("exit 42");
+/// let result = named.nonzero_captured();
+/// assert!(result.is_err());
+/// ```
+pub trait OutputWithName {
+    #[must_use]
+    fn named(self, s: impl AsRef<str>) -> NamedOutput;
+}
+
+impl OutputWithName for Output {
+    fn named(self, s: impl AsRef<str>) -> NamedOutput {
+        NamedOutput {
+            name: s.as_ref().to_string(),
+            output: self,
+        }
+    }
+}
+
 /// Holds a the `Output` of a command's execution along with it's "name"
 ///
 /// When paired with `CmdError` a `Result<NamedOutput, CmdError>` will retain the
