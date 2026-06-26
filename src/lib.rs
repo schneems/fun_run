@@ -695,7 +695,7 @@ impl ExitStatusFromCode for ExitStatus {
     }
 }
 
-/// Holds a the `Output` of a command's execution along with its "name"
+/// Holds an [`Output`] of a command's execution along with its "name"
 ///
 /// When paired with `CmdError` a `Result<NamedOutput, CmdError>` will retain the
 /// "name" of the command regardless of succss or failure.
