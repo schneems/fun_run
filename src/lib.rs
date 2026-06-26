@@ -313,7 +313,6 @@ use regex::Regex;
 use std::ffi::OsString;
 use std::fmt::Display;
 use std::io::Write;
-use std::os::unix::process::ExitStatusExt;
 use std::process::Command;
 use std::process::ExitStatus;
 use std::process::Output;
@@ -894,8 +893,21 @@ impl From<CmdError> for NamedOutput {
     }
 }
 
-fn status_from_code(code: i32) -> ExitStatus {
-    ExitStatus::from_raw((code & 0xff) << 8)
+fn status_from_code(code: u32) -> ExitStatus {
+    #[cfg(unix)]
+    {
+        use std::os::unix::process::ExitStatusExt;
+        // `from_raw` expects a `wait`-style status (exit code in the upper 8
+        // bits) as an i32. `code & 0xff` is always 0..=255, so `as i32` is a
+        // safe widening (the unsafe direction would be `i32 as u32`).
+        ExitStatus::from_raw(((code & 0xff) as i32) << 8)
+    }
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::ExitStatusExt;
+        // On Windows `from_raw` already takes a u32 exit code directly.
+        ExitStatus::from_raw(code & 0xff)
+    }
 }
 
 fn status_from_error(error: &std::io::Error) -> ExitStatus {
@@ -1108,9 +1120,9 @@ mod tests {
 
     #[test]
     fn test_status_from_code() {
-        for i in 0..=255 {
-            let status = status_from_code(i);
-            assert_eq!(i, status.code().unwrap());
+        for code in 0..=255i32 {
+            let status = status_from_code(code as u32);
+            assert_eq!(Some(code), status.code());
         }
     }
 
