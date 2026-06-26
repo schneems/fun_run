@@ -901,6 +901,33 @@ pub enum CmdError {
     NonZeroExitAlreadyStreamed(NamedOutput),
 }
 
+/// Unix does not return a code for a process that was terminated
+/// via a signal (like SIGKILL). People are used to bash convention
+/// where a SIGKILL-ing something would give `$?` of `143`. That
+/// is because bash makes a simplifying assumption to collapse signal and exit code
+/// into a single shared number:
+///
+/// [From GNU bash](https://web.archive.org/web/20260625050034/https://www.gnu.org/software/bash/manual/bash.html#Exit-Status-1)
+///
+/// > [...] a fatal signal whose number is N, Bash uses the value 128+N as the exit status.
+///
+/// People expect this number implicitly, so we replicate that behavior.
+fn bashify(status: &ExitStatus) -> i32 {
+    #[cfg(unix)]
+    {
+        use std::os::unix::process::ExitStatusExt;
+
+        status
+            .code()
+            .or_else(|| status.signal().map(|s| 128 + s))
+            .unwrap_or(1)
+    }
+    #[cfg(windows)]
+    {
+        status.code().unwrap_or(1)
+    }
+}
+
 impl Display for CmdError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -915,7 +942,7 @@ impl Display for CmdError {
                 writeln!(
                     f,
                     "exit status: {status}",
-                    status = named_output.output.status.code().unwrap_or(1)
+                    status = bashify(&named_output.output.status)
                 )?;
                 writeln!(f, "stdout: {stdout}",)?;
                 write!(f, "stderr: {stderr}",)
@@ -925,7 +952,7 @@ impl Display for CmdError {
                 writeln!(
                     f,
                     "exit status: {status}",
-                    status = named_output.output.status.code().unwrap_or(1)
+                    status = bashify(&named_output.output.status)
                 )?;
                 writeln!(f, "stdout: <see above>")?;
                 write!(f, "stderr: <see above>")
@@ -1263,5 +1290,15 @@ mod tests {
             Some(1),
             status_from_error(&Error::from(ErrorKind::Other)).code()
         );
+    }
+
+    #[test]
+    #[cfg(unix)]
+    fn maps_signal_to_exit() {
+        use std::os::unix::process::ExitStatusExt;
+
+        let sigterm = 15;
+        let code = bashify(&ExitStatus::from_raw(sigterm));
+        assert_eq!(143, code);
     }
 }
