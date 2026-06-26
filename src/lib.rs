@@ -600,17 +600,14 @@ impl CommandWithName for &mut NamedCommand<'_> {
 /// assert_eq!(String::from("exit 0"), named.name());
 /// ```
 ///
-/// For generating an [`Output`] with a non-zero status on Unix you can use [`std::os::unix::process::ExitStatusExt::from_raw`]
-/// which needs to be bit shifted by 8 bits to get the same status code back:
+/// For generating an [`Output`] with a non-zero status on Unix you can use [`ExitStatusFromCode::from_code`],
+/// which builds the `ExitStatus` from a plain exit code without you having to bit-shift the raw wait status yourself:
 ///
 /// ```
-/// use fun_run::OutputWithName;
-/// use std::os::unix::process::ExitStatusExt;
+/// use fun_run::{OutputWithName, ExitStatusFromCode};
 ///
-/// // The `ExitStatus::from_raw` input is expected to come from `wait` https://pubs.opengroup.org/onlinepubs/9799919799/functions/wait.html
-/// // with `WEXITSTATUS` being the code we care about so it needs to be shifted by 8 bits.
 /// let output = std::process::Output {
-///     status: std::process::ExitStatus::from_raw(42 << 8),
+///     status: std::process::ExitStatus::from_code(42),
 ///     stdout: Vec::new(),
 ///     stderr: Vec::new()
 /// };
@@ -635,7 +632,70 @@ impl OutputWithName for Output {
     }
 }
 
-/// Holds a the `Output` of a command's execution along with it's "name"
+/// Extension trait for [`ExitStatus`] to build an instance based on exit code
+///
+/// Confusingly the [`std::os::unix::process::ExitStatusExt::from_raw`] function does NOT return its own input on Unix:
+///
+/// ```
+/// # #[cfg(unix)] {
+/// use std::process::ExitStatus;
+/// use std::os::unix::process::ExitStatusExt;
+///
+/// let status = ExitStatus::from_raw(41);
+/// assert_eq!(None, status.code());
+///
+/// // The input has to be bit-shifted by 8 to get it to work:
+/// let status = ExitStatus::from_raw(41<<8);
+/// assert_eq!(Some(41), status.code());
+/// # }
+/// ```
+///
+/// That's because the input isn't an exit code but rather data structure from `wait` <https://pubs.opengroup.org/onlinepubs/9799919799/functions/wait.html>.
+/// To input a known status code, you can bitshift it by 8 OR you can use this nice helper extension
+/// trait:
+///
+/// ```
+/// use std::process::ExitStatus;
+/// use fun_run::ExitStatusFromCode;
+///
+/// let status = ExitStatus::from_code(41);
+/// assert_eq!(Some(41), status.code());
+/// ```
+///
+/// The main use case for generating a manual [`ExitStatus`] is for unit testing.
+pub trait ExitStatusFromCode {
+    /// Build an [`ExitStatus`] from an exit code.
+    ///
+    /// Takes a [`u8`] on Unix because exit codes there are limited to
+    /// `0..=255`. Non-uniform type signature with windows provides infallible api
+    /// for a correctness tradeoff.
+    #[cfg(unix)]
+    #[must_use]
+    fn from_code(code: u8) -> ExitStatus;
+
+    /// Build an [`ExitStatus`] from an exit code.
+    ///
+    /// Takes a [`u32`] on Windows because exit codes there are full 32-bit
+    /// `DWORD` values.  Non-uniform type signature with unix provides infallible api
+    /// for a correctness tradeoff.
+    #[cfg(windows)]
+    #[must_use]
+    fn from_code(code: u32) -> ExitStatus;
+}
+
+impl ExitStatusFromCode for ExitStatus {
+    #[cfg(unix)]
+    fn from_code(code: u8) -> ExitStatus {
+        status_from_code(code.into())
+    }
+
+    #[cfg(windows)]
+    fn from_code(code: u32) -> ExitStatus {
+        status_from_code(code)
+    }
+}
+
+/// Holds a the `Output` of a command's execution along with its "name"
 ///
 /// When paired with `CmdError` a `Result<NamedOutput, CmdError>` will retain the
 /// "name" of the command regardless of succss or failure.
@@ -947,6 +1007,11 @@ impl From<CmdError> for NamedOutput {
     }
 }
 
+#[cfg(not(any(unix, windows)))]
+compile_error!(
+    "fun_run constructs `ExitStatus` values and only supports `unix` and `windows` targets"
+);
+
 fn status_from_code(code: u32) -> ExitStatus {
     #[cfg(unix)]
     {
@@ -1176,9 +1241,9 @@ mod tests {
 
     #[test]
     fn test_status_from_code() {
-        for code in 0..=255i32 {
-            let status = status_from_code(code as u32);
-            assert_eq!(Some(code), status.code());
+        for code in 0..=255 {
+            let status = ExitStatus::from_code(code);
+            assert_eq!(Some(code as i32), status.code());
         }
     }
 
