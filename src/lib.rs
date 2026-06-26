@@ -887,8 +887,26 @@ impl From<CmdError> for NamedOutput {
     }
 }
 
+fn status_from_code(code: i32) -> ExitStatus {
+    ExitStatus::from_raw((code & 0xff) << 8)
+}
+
 fn status_from_error(error: &std::io::Error) -> ExitStatus {
-    ExitStatus::from_raw(error.raw_os_error().unwrap_or(-1))
+    use std::io::ErrorKind;
+
+    let code = match error.kind() {
+        ErrorKind::NotFound => 127, // ENOENT
+        // Found but not executable -> "cannot execute"
+        ErrorKind::PermissionDenied      // EACCES
+        | ErrorKind::IsADirectory        // EISDIR
+        | ErrorKind::NotADirectory       // ENOTDIR
+        | ErrorKind::ArgumentListTooLong // E2BIG
+        | ErrorKind::OutOfMemory         // ENOMEM
+        | ErrorKind::ExecutableFileBusy  // ETXTBSY
+        => 126,
+        _ => 1,
+    };
+    status_from_code(code)
 }
 
 fn display_out_or_empty(contents: &[u8]) -> String {
@@ -1074,5 +1092,18 @@ impl std::error::Error for IoErrorAnnotation {
 
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         Some(&self.source)
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_status_from_code() {
+        for i in 0..=255 {
+            let status = status_from_code(i);
+            assert_eq!(i, status.code().unwrap());
+        }
     }
 }
