@@ -863,9 +863,7 @@ impl CmdError {
     /// If the command failed and no error can be produced a default non-zero value will be returned
     pub fn status(&self) -> ExitStatus {
         match self {
-            CmdError::SystemError(_, error) => {
-                ExitStatus::from_raw(error.raw_os_error().unwrap_or(-1))
-            }
+            CmdError::SystemError(_, error) => status_from_error(error),
             CmdError::NonZeroExitNotStreamed(named_output) => named_output.status().to_owned(),
             CmdError::NonZeroExitAlreadyStreamed(named_output) => named_output.status().to_owned(),
         }
@@ -878,7 +876,7 @@ impl From<CmdError> for NamedOutput {
             CmdError::SystemError(name, error) => NamedOutput {
                 name,
                 output: Output {
-                    status: ExitStatus::from_raw(error.raw_os_error().unwrap_or(-1)),
+                    status: status_from_error(&error),
                     stdout: Vec::new(),
                     stderr: error.to_string().into_bytes(),
                 },
@@ -887,6 +885,10 @@ impl From<CmdError> for NamedOutput {
             | CmdError::NonZeroExitAlreadyStreamed(named) => named,
         }
     }
+}
+
+fn status_from_error(error: &std::io::Error) -> ExitStatus {
+    ExitStatus::from_raw(error.raw_os_error().unwrap_or(-1))
 }
 
 fn display_out_or_empty(contents: &[u8]) -> String {
