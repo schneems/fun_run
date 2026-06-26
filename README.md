@@ -3,12 +3,12 @@
 # Fun Run
 
 What does the "Zombie Zoom 5K", the "Wibbly wobbly log jog", and the "Turkey Trot" have in common?
-They're runs with a fun name! That's exactly what `fun_run` does. It makes running your Rust `Command`s
+They're runs with a fun name! That's exactly what `fun_run` does. It makes running your Rust [`Command`](https://doc.rust-lang.org/stable/std/process/struct.Command.html)s
 more fun, by naming them.
 
 ## What is Fun Run?
 
-Fun run is designed for the use case where not only do you want to run a `Command` you want to
+Fun run is designed for the use case where not only do you want to run a [`Command`](https://doc.rust-lang.org/stable/std/process/struct.Command.html) you want to
 output what you're running and what happened. Building a CLI tool is a great use case. Another is
 creating [a buildpack](https://github.com/heroku/buildpacks-ruby/tree/4f514f6046568ada523eefd41b3024f86f1c67ce).
 
@@ -201,10 +201,10 @@ assert_eq!(r#"RAILS_ENV="production" bundle install"#, renamed_cmd.name())
 When a command execution returns an Err due to a system error (and not because the program it
 executed launched but returned non-zero status), it's usually because the executable couldn't be
 found, or if it was found, it couldn't be launched, for example due to a permissions error. The
-[which_problem](https://github.com/schneems/which_problem) crate is designed to add debuggin errors
+[which_problem](https://github.com/schneems/which_problem) crate is designed to add debugging errors
 to help you identify why the command couldn't be launched.
 
-The name `which_problem` works like `which` to but helps you identify common mistakes such as typos:
+The name `which_problem` works like `which` but helps you identify common mistakes such as typos:
 
 ```shell
 $ cargo whichp zuby
@@ -245,9 +245,9 @@ about the contents of your disk such as layout and file permissions.
 
 ## What won't it do?
 
-The `fun_run` library doesn't support executing a `Command` in ways that do not produce an
-`Output`, for example calling `Command::spawn` returns a `Result<std::process::Child, std::io::Error>`
-(Which doesn't contain an `Output`). If you want to run-for-fun in the background, spawn a thread
+The `fun_run` library doesn't support executing a [`Command`](https://doc.rust-lang.org/stable/std/process/struct.Command.html) in ways that do not produce an
+[`Output`](https://doc.rust-lang.org/stable/std/process/struct.Output.html), for example calling [`Command::spawn`] returns a `Result<std::process::Child, std::io::Error>`
+(Which doesn't contain an [`Output`](https://doc.rust-lang.org/stable/std/process/struct.Output.html)). If you want to run-for-fun in the background, spawn a thread
 and join it manually:
 
 ```rust
@@ -295,17 +295,17 @@ cmd.output()
 
 Here's some fun functions you can use to help you run:
 
-- [`on_system_error`](https://docs.rs/fun_run/latest/fun_run/fn.on_system_error.html) - Convert `std::io::Error` into `CmdError`
-- [`nonzero_streamed`](https://docs.rs/fun_run/latest/fun_run/fn.nonzero_streamed.html) - Produces a `NamedOutput` from `Output` that has already been streamd to
+- [`on_system_error`](https://docs.rs/fun_run/latest/fun_run/fn.on_system_error.html) - Convert [`std::io::Error`](https://doc.rust-lang.org/stable/std/io/error/struct.Error.html) into [`CmdError`](https://docs.rs/fun_run/latest/fun_run/enum.CmdError.html)
+- [`nonzero_streamed`](https://docs.rs/fun_run/latest/fun_run/fn.nonzero_streamed.html) - Produces a [`NamedOutput`](https://docs.rs/fun_run/latest/fun_run/struct.NamedOutput.html) from [`Output`](https://doc.rust-lang.org/stable/std/process/struct.Output.html) that has already been streamed to
   the user
-- [`nonzero_captured`](https://docs.rs/fun_run/latest/fun_run/fn.nonzero_captured.html) - Like `nonzero_streamed` but for when the user hasn't already seen the
+- [`nonzero_captured`](https://docs.rs/fun_run/latest/fun_run/fn.nonzero_captured.html) - Like [`nonzero_streamed`](https://docs.rs/fun_run/latest/fun_run/fn.nonzero_streamed.html) but for when the user hasn't already seen the
   output
 - [`display`](https://docs.rs/fun_run/latest/fun_run/fn.display.html) - Converts an `&mut Command` into a human readable string
-- [`display_with_env_keys`](https://docs.rs/fun_run/latest/fun_run/fn.display_with_env_keys.html) - Like `display` but selectively shows environment variables.
+- [`display_with_env_keys`](https://docs.rs/fun_run/latest/fun_run/fn.display_with_env_keys.html) - Like [`display`](https://docs.rs/fun_run/latest/fun_run/fn.display.html) but selectively shows environment variables.
 
 ## Async
 
-This library uses syncronous command execution. If you’re using this library in an async context,
+This library uses synchronous command execution. If you’re using this library in an async context,
 you’ll want to use an async wrapper like [tokio::task::block_in_place](https://docs.rs/tokio/latest/tokio/task/fn.block_in_place.html).
 
 <!-- cargo-rdme end -->
