@@ -1131,16 +1131,16 @@ mod tests {
         use std::io::{Error, ErrorKind};
 
         assert_eq!(
-            status_from_error(&Error::from(ErrorKind::NotFound)).code(),
-            Some(127)
+            Some(127),
+            status_from_error(&Error::from(ErrorKind::NotFound)).code()
         );
         assert_eq!(
-            status_from_error(&Error::from(ErrorKind::PermissionDenied)).code(),
-            Some(126)
+            Some(126),
+            status_from_error(&Error::from(ErrorKind::PermissionDenied)).code()
         );
         assert_eq!(
-            status_from_error(&Error::from(ErrorKind::Other)).code(),
-            Some(1)
+            Some(1),
+            status_from_error(&Error::from(ErrorKind::Other)).code()
         );
     }
 }
