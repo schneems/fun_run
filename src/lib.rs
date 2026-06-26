@@ -858,14 +858,16 @@ impl CmdError {
         }
     }
 
-    /// Returns the OS [ExitStatus] if one was provided
+    /// Returns the OS [`ExitStatus`] of the command.
     ///
-    /// If the command failed and no error can be produced a default non-zero value will be returned
+    /// For [`CmdError::SystemError`] the command never ran, so there is no real
+    /// OS exit status. In that case a value derived from the underlying
+    /// [`std::io::Error`] is returned. It is only guaranteed to be non-zero, so
+    /// prefer inspecting the [`std::io::Error`] and its [`std::io::ErrorKind`]
+    /// directly rather than relying on the exact code.
     pub fn status(&self) -> ExitStatus {
         match self {
-            CmdError::SystemError(_, error) => {
-                ExitStatus::from_raw(error.raw_os_error().unwrap_or(-1))
-            }
+            CmdError::SystemError(_, error) => status_from_error(error),
             CmdError::NonZeroExitNotStreamed(named_output) => named_output.status().to_owned(),
             CmdError::NonZeroExitAlreadyStreamed(named_output) => named_output.status().to_owned(),
         }
@@ -873,12 +875,15 @@ impl CmdError {
 }
 
 impl From<CmdError> for NamedOutput {
+    /// When the error is a [`CmdError::SystemError`], the resulting
+    /// [`ExitStatus`] is synthetic and imprecise. The only stability guarantee
+    /// is that it will be non-zero.
     fn from(value: CmdError) -> Self {
         match value {
             CmdError::SystemError(name, error) => NamedOutput {
                 name,
                 output: Output {
-                    status: ExitStatus::from_raw(error.raw_os_error().unwrap_or(-1)),
+                    status: status_from_error(&error),
                     stdout: Vec::new(),
                     stderr: error.to_string().into_bytes(),
                 },
@@ -887,6 +892,28 @@ impl From<CmdError> for NamedOutput {
             | CmdError::NonZeroExitAlreadyStreamed(named) => named,
         }
     }
+}
+
+fn status_from_code(code: i32) -> ExitStatus {
+    ExitStatus::from_raw((code & 0xff) << 8)
+}
+
+fn status_from_error(error: &std::io::Error) -> ExitStatus {
+    use std::io::ErrorKind;
+
+    let code = match error.kind() {
+        ErrorKind::NotFound => 127, // ENOENT
+        // Found but not executable -> "cannot execute"
+        ErrorKind::PermissionDenied      // EACCES
+        | ErrorKind::IsADirectory        // EISDIR
+        | ErrorKind::NotADirectory       // ENOTDIR
+        | ErrorKind::ArgumentListTooLong // E2BIG
+        | ErrorKind::OutOfMemory         // ENOMEM
+        | ErrorKind::ExecutableFileBusy  // ETXTBSY
+        => 126,
+        _ => 1,
+    };
+    status_from_code(code)
 }
 
 fn display_out_or_empty(contents: &[u8]) -> String {
@@ -1072,5 +1099,36 @@ impl std::error::Error for IoErrorAnnotation {
 
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         Some(&self.source)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_status_from_code() {
+        for i in 0..=255 {
+            let status = status_from_code(i);
+            assert_eq!(i, status.code().unwrap());
+        }
+    }
+
+    #[test]
+    fn maps_error_kinds_to_shell_codes() {
+        use std::io::{Error, ErrorKind};
+
+        assert_eq!(
+            status_from_error(&Error::from(ErrorKind::NotFound)).code(),
+            Some(127)
+        );
+        assert_eq!(
+            status_from_error(&Error::from(ErrorKind::PermissionDenied)).code(),
+            Some(126)
+        );
+        assert_eq!(
+            status_from_error(&Error::from(ErrorKind::Other)).code(),
+            Some(1)
+        );
     }
 }
