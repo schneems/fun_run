@@ -7,6 +7,7 @@
 - Add `fun_run::OutputWithName` extension trait to construct a synthetic `NamedOutput` without running a process. Useful for testing code that inspects a `NamedOutput`/`CmdError` (https://github.com/schneems/fun_run/pull/23)
 - Add `fun_run::ExitStatusFromCode` extension trait as an ergonomic construct to build an `ExitStatus` without bit shifting (https://github.com/schneems/fun_run/pull/23)
 - Improve `exit status` display for `CmdError`. On Unix, when a signal kills a process it does not have a status code `ExitStatus::code()` returns `None`. Previously we were defaulting to a value of `1` for that case. Now, we are replicating the behavior of bash by adding `128` to the signal number such that `SIGTERM` becomes `143`.
+- Add signal output line to `CmdError` display. Signals documented by POSIX are printed with their human-readable name `signal: 15 (SIGTERM)`. Other signals print only the number `signal: 126`.
 
 ## 0.6.0
 
