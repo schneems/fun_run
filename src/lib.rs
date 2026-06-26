@@ -905,8 +905,10 @@ fn status_from_code(code: u32) -> ExitStatus {
     #[cfg(windows)]
     {
         use std::os::windows::process::ExitStatusExt;
-        // On Windows `from_raw` already takes a u32 exit code directly.
-        ExitStatus::from_raw(code & 0xff)
+        // On Windows `from_raw` takes the exit code directly. Unlike Unix there
+        // is no `wait`-style encoding, so no `& 0xff` masking/shifting is needed
+        // (Windows exit codes are full u32 values, not limited to 0..=255).
+        ExitStatus::from_raw(code)
     }
 }
 
