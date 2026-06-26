@@ -858,9 +858,13 @@ impl CmdError {
         }
     }
 
-    /// Returns the OS [ExitStatus] if one was provided
+    /// Returns the OS [`ExitStatus`] of the command.
     ///
-    /// If the command failed and no error can be produced a default non-zero value will be returned
+    /// For [`CmdError::SystemError`] the command never ran, so there is no real
+    /// OS exit status. In that case a value derived from the underlying
+    /// [`std::io::Error`] is returned. It is only guaranteed to be non-zero, so
+    /// prefer inspecting the [`std::io::Error`] and its [`std::io::ErrorKind`]
+    /// directly rather than relying on the exact code.
     pub fn status(&self) -> ExitStatus {
         match self {
             CmdError::SystemError(_, error) => status_from_error(error),
@@ -871,6 +875,9 @@ impl CmdError {
 }
 
 impl From<CmdError> for NamedOutput {
+    /// When the error is a [`CmdError::SystemError`], the resulting
+    /// [`ExitStatus`] is synthetic and imprecise. The only stability guarantee
+    /// is that it will be non-zero.
     fn from(value: CmdError) -> Self {
         match value {
             CmdError::SystemError(name, error) => NamedOutput {

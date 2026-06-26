@@ -1,6 +1,7 @@
 ## Unreleased
 
 - Update documentation (https://github.com/schneems/fun_run/pull/16)
+- Clarify that the `ExitStatus` from `CmdError::status()` and from the `impl From<CmdError> for NamedOutput` conversion is synthetic for the `CmdError::SystemError` variant (the command never ran). In that case the status is fabricated from the underlying `std::io::Error` and is only guaranteed to be non-zero. The exact code should not be relied upon, instead use the `ErrorKind` enum directly. (https://github.com/schneems/fun_run/pull/24)
 
 ## 0.6.0
 
