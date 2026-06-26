@@ -1,7 +1,7 @@
 ## Unreleased
 
 - Update documentation (https://github.com/schneems/fun_run/pull/16)
-- Clarify that the `ExitStatus` from `CmdError::status()` and from the `impl From<CmdError> for NamedOutput` conversion is synthetic for the `CmdError::SystemError` variant (the command never ran). In that case the status is fabricated from the underlying `std::io::Error` and is only guaranteed to be non-zero. The exact code should not be relied upon, instead use the `ErrorKind` enum directly. (https://github.com/schneems/fun_run/pull/24)
+- Fix `CmdError::status()` and the `impl From<CmdError> for NamedOutput` conversion so a failed-to-launch command (the `CmdError::SystemError` variant) returns a decodable, shell-conventional exit code (127 not-found, 126 not-executable, 1 otherwise) instead of a raw errno that could decode as a signal. The status is still synthetic (the command never ran) and only guaranteed to be non-zero, so prefer inspecting the underlying `std::io::Error` and its `ErrorKind` directly rather than relying on the exact code. (https://github.com/schneems/fun_run/pull/25)
 
 ## 0.6.0
 
