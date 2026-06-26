@@ -928,6 +928,40 @@ fn bashify(status: &ExitStatus) -> i32 {
     }
 }
 
+/// Returns a printable description of the signal that killed a process
+/// (if it was killed by a signal)
+fn signal_line(status: &ExitStatus) -> Option<String> {
+    #[cfg(unix)]
+    {
+        use std::os::unix::process::ExitStatusExt;
+
+        status.signal().map(|signal| {
+            // https://pubs.opengroup.org/onlinepubs/9799919799/utilities/kill.html
+            let name = match signal {
+                1 => "SIGHUP",
+                2 => "SIGINT",
+                3 => "SIGQUIT",
+                6 => "SIGABRT",
+                9 => "SIGKILL",
+                14 => "SIGALRM",
+                15 => "SIGTERM",
+                _ => "",
+            };
+
+            if name.is_empty() {
+                format!("signal: {signal}")
+            } else {
+                format!("signal: {signal} ({name})")
+            }
+        })
+    }
+    #[cfg(windows)]
+    {
+        let _ = status;
+        None
+    }
+}
+
 impl Display for CmdError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -944,6 +978,9 @@ impl Display for CmdError {
                     "exit status: {status}",
                     status = bashify(&named_output.output.status)
                 )?;
+                if let Some(signal_line) = signal_line(&named_output.output.status) {
+                    writeln!(f, "{signal_line}")?;
+                }
                 writeln!(f, "stdout: {stdout}",)?;
                 write!(f, "stderr: {stderr}",)
             }
@@ -954,6 +991,9 @@ impl Display for CmdError {
                     "exit status: {status}",
                     status = bashify(&named_output.output.status)
                 )?;
+                if let Some(signal_line) = signal_line(&named_output.output.status) {
+                    writeln!(f, "{signal_line}")?;
+                }
                 writeln!(f, "stdout: <see above>")?;
                 write!(f, "stderr: <see above>")
             }
@@ -1298,7 +1338,34 @@ mod tests {
         use std::os::unix::process::ExitStatusExt;
 
         let sigterm = 15;
-        let code = bashify(&ExitStatus::from_raw(sigterm));
+        let status = ExitStatus::from_raw(sigterm);
+        assert_eq!(None, status.code());
+        assert_eq!(Some(15), status.signal());
+
+        let code = bashify(&status);
         assert_eq!(143, code);
+    }
+
+    #[test]
+    #[cfg(unix)]
+    fn maps_signal_to_human_readable_output() {
+        use std::os::unix::process::ExitStatusExt;
+
+        let sigterm = 15;
+        let status = ExitStatus::from_raw(sigterm);
+        assert_eq!(None, status.code());
+        assert_eq!(Some(15), status.signal());
+
+        assert_eq!(
+            String::from("signal: 15 (SIGTERM)"),
+            signal_line(&status).unwrap()
+        );
+
+        let signal = 126;
+        let status = ExitStatus::from_raw(signal);
+        assert_eq!(None, status.code());
+        assert_eq!(Some(126), status.signal());
+
+        assert_eq!(String::from("signal: 126"), signal_line(&status).unwrap());
     }
 }
