@@ -1103,7 +1103,7 @@ impl std::error::Error for IoErrorAnnotation {
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use super::*;
 
     #[test]
@@ -1112,5 +1112,23 @@ mod test {
             let status = status_from_code(i);
             assert_eq!(i, status.code().unwrap());
         }
+    }
+
+    #[test]
+    fn maps_error_kinds_to_shell_codes() {
+        use std::io::{Error, ErrorKind};
+
+        assert_eq!(
+            status_from_error(&Error::from(ErrorKind::NotFound)).code(),
+            Some(127)
+        );
+        assert_eq!(
+            status_from_error(&Error::from(ErrorKind::PermissionDenied)).code(),
+            Some(126)
+        );
+        assert_eq!(
+            status_from_error(&Error::from(ErrorKind::Other)).code(),
+            Some(1)
+        );
     }
 }
