@@ -57,7 +57,7 @@ jobs:
         run: cargo test --all-features
 
   msrv:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-26.04
     steps:
       - name: Checkout
         uses: actions/checkout@v6
