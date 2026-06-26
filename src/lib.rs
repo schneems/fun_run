@@ -1,12 +1,12 @@
 //! # Fun Run
 //!
 //! What does the "Zombie Zoom 5K", the "Wibbly wobbly log jog", and the "Turkey Trot" have in common?
-//! They're runs with a fun name! That's exactly what `fun_run` does. It makes running your Rust `Command`s
+//! They're runs with a fun name! That's exactly what `fun_run` does. It makes running your Rust [`Command`]s
 //! more fun, by naming them.
 //!
 //! ## What is Fun Run?
 //!
-//! Fun run is designed for the use case where not only do you want to run a `Command` you want to
+//! Fun run is designed for the use case where not only do you want to run a [`Command`] you want to
 //! output what you're running and what happened. Building a CLI tool is a great use case. Another is
 //! creating [a buildpack](https://github.com/heroku/buildpacks-ruby/tree/4f514f6046568ada523eefd41b3024f86f1c67ce).
 //!
@@ -201,10 +201,10 @@
 //! When a command execution returns an Err due to a system error (and not because the program it
 //! executed launched but returned non-zero status), it's usually because the executable couldn't be
 //! found, or if it was found, it couldn't be launched, for example due to a permissions error. The
-//! [which_problem](https://github.com/schneems/which_problem) crate is designed to add debuggin errors
+//! [which_problem](https://github.com/schneems/which_problem) crate is designed to add debugging errors
 //! to help you identify why the command couldn't be launched.
 //!
-//! The name `which_problem` works like `which` to but helps you identify common mistakes such as typos:
+//! The name `which_problem` works like `which` but helps you identify common mistakes such as typos:
 //!
 //! ```shell
 //! $ cargo whichp zuby
@@ -245,9 +245,9 @@
 //!
 //! ## What won't it do?
 //!
-//! The `fun_run` library doesn't support executing a `Command` in ways that do not produce an
-//! `Output`, for example calling `Command::spawn` returns a `Result<std::process::Child, std::io::Error>`
-//! (Which doesn't contain an `Output`). If you want to run-for-fun in the background, spawn a thread
+//! The `fun_run` library doesn't support executing a [`Command`] in ways that do not produce an
+//! [`Output`], for example calling [`Command::spawn`](https://doc.rust-lang.org/std/process/struct.Command.html#method.spawn) returns a `Result<std::process::Child, std::io::Error>`
+//! (Which doesn't contain an [`Output`]). If you want to run-for-fun in the background, spawn a thread
 //! and join it manually:
 //!
 //! ```no_run
@@ -295,17 +295,17 @@
 //!
 //! Here's some fun functions you can use to help you run:
 //!
-//! - [`on_system_error`] - Convert `std::io::Error` into `CmdError`
-//! - [`nonzero_streamed`] - Produces a `NamedOutput` from `Output` that has already been streamd to
+//! - [`on_system_error`] - Convert [`std::io::Error`] into [`CmdError`]
+//! - [`nonzero_streamed`] - Produces a [`NamedOutput`] from [`Output`] that has already been streamed to
 //!   the user
-//! - [`nonzero_captured`] - Like `nonzero_streamed` but for when the user hasn't already seen the
+//! - [`nonzero_captured`] - Like [`nonzero_streamed`] but for when the user hasn't already seen the
 //!   output
 //! - [`display`] - Converts an `&mut Command` into a human readable string
-//! - [`display_with_env_keys`] - Like `display` but selectively shows environment variables.
+//! - [`display_with_env_keys`] - Like [`display`] but selectively shows environment variables.
 //!
 //! ## Async
 //!
-//! This library uses syncronous command execution. If you’re using this library in an async context,
+//! This library uses synchronous command execution. If you’re using this library in an async context,
 //! you’ll want to use an async wrapper like [tokio::task::block_in_place](https://docs.rs/tokio/latest/tokio/task/fn.block_in_place.html).
 
 use command::output_and_write_streams;
@@ -338,8 +338,8 @@ mod command;
 ///     Ok(output) => {
 ///         assert_eq!("bundle install", &output.name())
 ///     },
-///     Err(varient) => {
-///         assert_eq!("bundle install", &varient.name())
+///     Err(variant) => {
+///         assert_eq!("bundle install", &variant.name())
 ///     }
 /// }
 /// ```
@@ -370,10 +370,10 @@ mod command;
 ///              &output.name()
 ///          )
 ///      }
-///      Err(varient) => {
+///      Err(variant) => {
 ///          assert_eq!(
 ///              "GEM_HOME=\"/usr/bin/local/.gems\" gem install bundler -v 2.4.1.7",
-///              &varient.name()
+///              &variant.name()
 ///          )
 ///      }
 ///  }
@@ -509,7 +509,7 @@ impl CommandWithName for &mut Command {
 /// functions. When one of those functions such as [CommandWithName::named_fn] or [CommandWithName::named]
 /// are called, Rust needs somewhere for the new name string to live, so we move it over into this struct
 /// which also implements [CommandWithName]. You can gain access to the original [Command] reference
-/// via `CommandWithName::mut_cmd`
+/// via [`CommandWithName::mut_cmd`]
 pub struct NamedCommand<'a> {
     name: String,
     command: &'a mut Command,
@@ -581,7 +581,7 @@ impl CommandWithName for &mut NamedCommand<'_> {
     }
 }
 
-/// Extension trait for `Output` to generate `NamedOutput`
+/// Extension trait for [`Output`] to generate [`NamedOutput`]
 ///
 /// The primary use case is exercising a function that takes [`NamedOutput`] in its arguments in a test.
 ///
@@ -601,7 +601,7 @@ impl CommandWithName for &mut NamedCommand<'_> {
 /// ```
 ///
 /// For generating an [`Output`] with a non-zero status on Unix you can use [`ExitStatusFromCode::from_code`],
-/// which builds the `ExitStatus` from a plain exit code without you having to bit-shift the raw wait status yourself:
+/// which builds the [`ExitStatus`] from a plain exit code without you having to bit-shift the raw wait status yourself:
 ///
 /// ```
 /// use fun_run::{OutputWithName, ExitStatusFromCode};
@@ -697,8 +697,8 @@ impl ExitStatusFromCode for ExitStatus {
 
 /// Holds an [`Output`] of a command's execution along with its "name"
 ///
-/// When paired with `CmdError` a `Result<NamedOutput, CmdError>` will retain the
-/// "name" of the command regardless of succss or failure.
+/// When paired with [`CmdError`] a `Result<NamedOutput, CmdError>` will retain the
+/// "name" of the command regardless of success or failure.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct NamedOutput {
     name: String,
@@ -879,7 +879,7 @@ where
         .join(" ")
 }
 
-/// Who says (`Command`) errors can't be fun?
+/// Who says ([`Command`]) errors can't be fun?
 ///
 /// Fun run errors include all the info a user needs to debug, like
 /// the name of the command that failed and any outputs (like error messages
@@ -894,10 +894,33 @@ where
 #[derive(Debug)]
 #[allow(clippy::module_name_repetitions)]
 pub enum CmdError {
+    /// Command encountered an [`std::io::Error`] while trying to run
+    ///
+    /// The reasons why this can happen are platform specific, mostly it means that the process
+    /// could not be launched for some reason. The most common reason is that program name
+    /// doesn't exist or cannot be found:
+    ///
+    /// ```
+    /// use fun_run::CommandWithName;
+    ///
+    /// let result = std::process::Command::new("commandDoesNotExist").named_output();
+    /// match result{
+    ///     Err(fun_run::CmdError::SystemError(_, _)) => println!("could not boot"),
+    ///     _ => unimplemented!()
+    /// }
+    /// ```
     SystemError(String, std::io::Error),
 
+    /// Command booted, but [`ExitStatus::success`] reported that it failed.
+    ///
+    /// Will display the stdout/stderr to the user when displayed (since it wasn't previously)
+    /// streamed.
     NonZeroExitNotStreamed(NamedOutput),
 
+    /// Command booted, but [`ExitStatus::success`] reported that it failed.
+    ///
+    /// The command WAS streamed to the end user, so stdout/stderr does not
+    /// need to be printed again when rendering the error.
     NonZeroExitAlreadyStreamed(NamedOutput),
 }
 
@@ -1125,26 +1148,26 @@ fn display_out_or_empty(contents: &[u8]) -> String {
     }
 }
 
-/// Converts a `std::io::Error` into a `CmdError` which includes the formatted command name
+/// Converts a [`std::io::Error`] into a [`CmdError`] which includes the formatted command name
 #[must_use]
 pub fn on_system_error(name: String, error: std::io::Error) -> CmdError {
     CmdError::SystemError(name, error)
 }
 
-/// Converts an `Output` into an error when status is non-zero
+/// Converts an [`Output`] into an error when status is non-zero
 ///
-/// When calling a `Command` and streaming the output to stdout/stderr
+/// When calling a [`Command`] and streaming the output to stdout/stderr
 /// it can be jarring to have the contents emitted again in the error. When this
 /// error is displayed those outputs will not be repeated.
 ///
-/// Use when the `Output` comes from a source that was already streamed.
+/// Use when the [`Output`] comes from a source that was already streamed.
 ///
 /// To to include the results of stdout/stderr in the display of the error
-/// use `nonzero_captured` instead.
+/// use [`nonzero_captured`] instead.
 ///
 /// # Errors
 ///
-/// Returns Err when the `Output` status is non-zero
+/// Returns Err when the [`Output`] status is non-zero
 pub fn nonzero_streamed(name: String, output: impl Into<Output>) -> Result<NamedOutput, CmdError> {
     let output = output.into();
     if output.status.success() {
@@ -1157,16 +1180,16 @@ pub fn nonzero_streamed(name: String, output: impl Into<Output>) -> Result<Named
     }
 }
 
-/// Converts an `Output` into an error when status is non-zero
+/// Converts an [`Output`] into an error when status is non-zero
 ///
-/// Use when the `Output` comes from a source that was not streamed
+/// Use when the [`Output`] comes from a source that was not streamed
 /// to stdout/stderr so it will be included in the error display by default.
 ///
-/// To avoid double printing stdout/stderr when streaming use `nonzero_streamed`
+/// To avoid double printing stdout/stderr when streaming use [`nonzero_streamed`]
 ///
 /// # Errors
 ///
-/// Returns Err when the `Output` status is non-zero
+/// Returns Err when the [`Output`] status is non-zero
 pub fn nonzero_captured(name: String, output: impl Into<Output>) -> Result<NamedOutput, CmdError> {
     let output = output.into();
     if output.status.success() {
@@ -1179,7 +1202,7 @@ pub fn nonzero_captured(name: String, output: impl Into<Output>) -> Result<Named
     }
 }
 
-/// Adds diagnostic information to a `CmdError` using `which_problem` if it is a `CmdError::SystemError`
+/// Adds diagnostic information to a [`CmdError`] using `which_problem` if it is a [`CmdError::SystemError`]
 ///
 /// A `CmdError::SystemError` means that the command could not be run (different than, it ran but
 /// emitted an error). When that happens it usually means that either there's a typo in the command
@@ -1191,9 +1214,9 @@ pub fn nonzero_captured(name: String, output: impl Into<Output>) -> Result<Named
 /// things like missing or broken symlinks, invalid permissions, directories on the PATH that are
 /// empty etc.
 ///
-/// It's best used as a diagnostic for developers for why a CmdError::SytemError might have occured.
+/// It's best used as a diagnostic for developers for why a CmdError::SystemError might have occurred.
 /// For example, if the programmer executed the command with an empty PATH, this debugging tool
-/// would help them find and fix the (otherwise) tedius to debug problem.
+/// would help them find and fix the (otherwise) tedious to debug problem.
 ///
 /// Using this feature may leak sensitive information about the system if the input is untrusted so
 /// consider who has access to inputs, and who will view the outputs.
@@ -1211,7 +1234,7 @@ pub fn nonzero_captured(name: String, output: impl Into<Output>) -> Result<Named
 /// cmd.named_output().map_err(|error| {
 ///     fun_run::map_which_problem(error, cmd.mut_cmd(), std::env::var_os("PATH"))
 /// }).unwrap();
-/// ````
+/// ```
 #[cfg(feature = "which_problem")]
 pub fn map_which_problem(
     error: CmdError,
@@ -1248,7 +1271,9 @@ fn annotate_which_problem(
 
     let annotation = match problem {
         Ok(details) => format!("\nSystem diagnostic information:\n\n{details}"),
-        Err(error) => format!("\nInternal error while gathering dianostic information:\n\n{error}"),
+        Err(error) => {
+            format!("\nInternal error while gathering diagnostic information:\n\n{error}")
+        }
     };
 
     annotate_io_error(error, annotation)
