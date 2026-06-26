@@ -18,7 +18,7 @@ jobs:
         # which include the latest stable release of Rust, Rustup, Clippy and rustfmt.
         run: rustup update
       - name: Rust Cache
-        uses: Swatinem/rust-cache@v2.8.2
+        uses: Swatinem/rust-cache@v2.9.1
       - name: Check cargo publish
         run: cargo publish --dry-run
 
@@ -32,7 +32,7 @@ jobs:
         # which include the latest stable release of Rust, Rustup, Clippy and rustfmt.
         run: rustup update
       - name: Rust Cache
-        uses: Swatinem/rust-cache@v2.8.2
+        uses: Swatinem/rust-cache@v2.9.1
       - name: Clippy
         # Using --all-targets so tests are checked and --deny to fail on warnings.
         # Not using --locked here and below since Cargo.lock is in .gitignore.
@@ -52,7 +52,7 @@ jobs:
       - name: Update Rust toolchain
         run: rustup update
       - name: Rust Cache
-        uses: Swatinem/rust-cache@v2.8.2
+        uses: Swatinem/rust-cache@v2.9.1
       - name: Run unit tests
         run: cargo test --all-features
 
@@ -66,7 +66,7 @@ jobs:
       - name: Add Windows target
         run: rustup target add x86_64-pc-windows-msvc
       - name: Rust Cache
-        uses: Swatinem/rust-cache@v2.8.2
+        uses: Swatinem/rust-cache@v2.9.1
       - name: Clippy (Windows target)
         # which_problem feature omitted: that dependency is Unix-only
         run: cargo clippy --target x86_64-pc-windows-msvc --all-targets -- --deny warnings
@@ -82,7 +82,7 @@ jobs:
         # and catches code that silently raises the floor.
         run: rustup toolchain install 1.87 --profile minimal
       - name: Rust Cache
-        uses: Swatinem/rust-cache@v2.8.2
+        uses: Swatinem/rust-cache@v2.9.1
       - name: Build and test on MSRV
         run: cargo +1.87 test --all-features
 
@@ -94,7 +94,7 @@ jobs:
       - name: Update Rust toolchain
         run: rustup update
       - name: Rust Cache
-        uses: Swatinem/rust-cache@v2.8.2
+        uses: Swatinem/rust-cache@v2.9.1
       - name: Install cargo readme
         run: |
           cargo install cargo-rdme
