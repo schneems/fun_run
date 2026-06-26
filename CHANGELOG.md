@@ -1,6 +1,7 @@
 ## Unreleased
 
 - Update documentation (https://github.com/schneems/fun_run/pull/16)
+- Add Windows support: the crate now compiles on `*-pc-windows-*` targets, verified in CI via a cross-compile clippy job. The optional `which_problem` feature remains Unix-only. (https://github.com/schneems/fun_run/pull/26)
 - Fix `CmdError::status()` and the `impl From<CmdError> for NamedOutput` conversion so a failed-to-launch command (the `CmdError::SystemError` variant) returns a decodable, shell-conventional exit code (127 not-found, 126 not-executable, 1 otherwise) instead of a raw errno that could decode as a signal. The status is still synthetic (the command never ran) and only guaranteed to be non-zero, so prefer inspecting the underlying `std::io::Error` and its `ErrorKind` directly rather than relying on the exact code. (https://github.com/schneems/fun_run/pull/25)
 - Set the minimum supported Rust version (MSRV) to 1.87. This is required by the `std::io::ErrorKind` variants used to map launch failures to exit codes, and by the optional `which_problem` dependency which relies on `OsStr::display` (stabilized in 1.87). (https://github.com/schneems/fun_run/pull/25)
 

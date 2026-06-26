@@ -56,6 +56,21 @@ jobs:
       - name: Run unit tests
         run: cargo test --all-features
 
+  windows-check:
+    runs-on: ubuntu-26.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+      - name: Update Rust toolchain
+        run: rustup update
+      - name: Add Windows target
+        run: rustup target add x86_64-pc-windows-msvc
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v2.8.2
+      - name: Clippy (Windows target)
+        # which_problem feature omitted: that dependency is Unix-only
+        run: cargo clippy --target x86_64-pc-windows-msvc --all-targets -- --deny warnings
+
   msrv:
     runs-on: ubuntu-26.04
     steps:

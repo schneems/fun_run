@@ -81,14 +81,15 @@ impl<A: io::Write, B: io::Write> io::Write for TeeWrite<A, B> {
     }
 }
 
-#[cfg(test)]
+// These tests exercise Unix shell behavior (`echo`/`bash`), so the whole
+// module is Unix-only to avoid unused-import warnings on other platforms.
+#[cfg(all(test, unix))]
 mod test {
     use super::*;
     use pretty_assertions::assert_str_eq;
     use std::process::Command;
 
     #[test]
-    #[cfg(unix)]
     fn test_output_and_write_streams_stdout() {
         let mut stdout_buf = Vec::new();
         let mut stderr_buf = Vec::new();
@@ -107,7 +108,6 @@ mod test {
     }
 
     #[test]
-    #[cfg(unix)]
     fn test_output_and_write_streams_stderr() {
         let mut stdout_buf = Vec::new();
         let mut stderr_buf = Vec::new();
