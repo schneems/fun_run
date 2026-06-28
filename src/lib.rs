@@ -686,12 +686,30 @@ pub trait ExitStatusFromCode {
 impl ExitStatusFromCode for ExitStatus {
     #[cfg(unix)]
     fn from_code(code: u8) -> ExitStatus {
-        status_from_code(code.into())
+        use std::os::unix::process::ExitStatusExt;
+
+        // `from_raw` expects a `wait`-style status (the exit code lives in the
+        // upper 8 bits) as an i32. Because `code` is a `u8` (0..=255), the
+        // `as i32` cast is always lossless, then we shift it into place.
+        //
+        // Binary layout for `code = 0x2A` (42):
+        //
+        //   code as i32     0000_0000 0000_0000 0000_0000 0010_1010  = 42
+        //   (..) << 8       0000_0000 0000_0000 0010_1010 0000_0000  = 0x2A00
+        //
+        // The `u8` input is what keeps this correct: callers cannot supply a
+        // value above 255, so there are no high bits to mask off.
+        ExitStatus::from_raw((code as i32) << 8)
     }
 
     #[cfg(windows)]
     fn from_code(code: u32) -> ExitStatus {
-        status_from_code(code)
+        use std::os::windows::process::ExitStatusExt;
+
+        // On Windows `from_raw` takes the exit code directly. Unlike Unix there
+        // is no `wait`-style encoding, so no `& 0xff` masking/shifting is needed
+        // (Windows exit codes are full u32 values, not limited to 0..=255).
+        ExitStatus::from_raw(code)
     }
 }
 
@@ -1102,25 +1120,7 @@ compile_error!(
     "fun_run constructs `ExitStatus` values and only supports `unix` and `windows` targets"
 );
 
-fn status_from_code(code: u32) -> ExitStatus {
-    #[cfg(unix)]
-    {
-        use std::os::unix::process::ExitStatusExt;
-        // `from_raw` expects a `wait`-style status (exit code in the upper 8
-        // bits) as an i32. `code & 0xff` is always 0..=255, so `as i32` is a
-        // safe widening (the unsafe direction would be `i32 as u32`).
-        ExitStatus::from_raw(((code & 0xff) as i32) << 8)
-    }
-    #[cfg(windows)]
-    {
-        use std::os::windows::process::ExitStatusExt;
-        // On Windows `from_raw` takes the exit code directly. Unlike Unix there
-        // is no `wait`-style encoding, so no `& 0xff` masking/shifting is needed
-        // (Windows exit codes are full u32 values, not limited to 0..=255).
-        ExitStatus::from_raw(code)
-    }
-}
-
+/// Fakes an [`ExitStatus`] based on a [`std::io::Error`]
 fn status_from_error(error: &std::io::Error) -> ExitStatus {
     use std::io::ErrorKind;
 
@@ -1136,7 +1136,7 @@ fn status_from_error(error: &std::io::Error) -> ExitStatus {
         => 126,
         _ => 1,
     };
-    status_from_code(code)
+    ExitStatus::from_code(code)
 }
 
 fn display_out_or_empty(contents: &[u8]) -> String {
