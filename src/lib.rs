@@ -320,6 +320,81 @@ pub trait CommandWithName {
         self.named(name)
     }
 
+    /// Adds given environment variables to the command's name
+    ///
+    /// Useful for showing usage of a command that uses environment variables for configuration.
+    ///
+    /// ## Example
+    ///
+    /// ```
+    /// use fun_run::CommandWithName;
+    ///
+    /// let mut command = std::process::Command::new("bundle");
+    /// command
+    ///     .arg("install")
+    ///     .env("BUNDLE_WITHOUT", "development:test");
+    ///
+    /// let mut cmd = command.named_keys(["BUNDLE_WITHOUT"]);
+    /// assert_eq!(
+    ///     r#"BUNDLE_WITHOUT="development:test" bundle install"#,
+    ///     cmd.name()
+    /// );
+    /// ```
+    ///
+    /// Preserves prior re-naming:
+    ///
+    /// ```
+    /// use fun_run::CommandWithName;
+    ///
+    /// let mut command = std::process::Command::new("bundle");
+    /// command
+    ///     .arg("install")
+    ///     .envs([
+    ///         ("BUNDLE_WITHOUT", "development:test"),
+    ///         ("BUNDLE_PATH", "vendor/bundle")
+    ///     ]);
+    ///
+    /// let mut cmd = command.named("./bin/bundle install");
+    /// let mut cmd = cmd.named_keys(["BUNDLE_WITHOUT"]);
+    ///
+    /// assert_eq!(
+    ///     r#"BUNDLE_WITHOUT="development:test" ./bin/bundle install"#,
+    ///     cmd.name()
+    /// );
+    ///
+    /// let mut cmd = cmd.named_keys(["BUNDLE_PATH"]);
+    /// assert_eq!(
+    ///     r#"BUNDLE_PATH="vendor/bundle" BUNDLE_WITHOUT="development:test" ./bin/bundle install"#,
+    ///     cmd.name()
+    /// );
+    /// ```
+    ///
+    ///
+    /// Re-naming a command that previously had an environment variable prepended will NOT
+    /// preserve the environment variables.
+    ///
+    /// This function is NOT (currently) idempotent. Calling it twice will prepend
+    /// the same environment variable twice. This behavior might change in the future (such that
+    /// under some conditions is becomes idempotent). Therefore you shouldn't consider this warning
+    /// a stability guarantee.
+    #[cfg(command_resolved_envs)]
+    #[allow(clippy::needless_lifetimes)]
+    fn named_keys<'a, T, K>(&'a mut self, keys: T) -> NamedCommand<'a>
+    where
+        T: IntoIterator<Item = K>,
+        K: Into<OsString>,
+    {
+        let old = self.name();
+        let cmd = self.mut_cmd();
+        let name = display_name_with_env_keys(
+            old,
+            cmd.get_resolved_envs()
+                .collect::<HashMap<OsString, OsString>>(),
+            keys,
+        );
+        self.named(name)
+    }
+
     /// Runs the command without streaming
     ///
     /// It's like [`Command::output`] but all the outputs carry the name of the original
@@ -779,7 +854,6 @@ pub fn display(command: &mut Command) -> String {
 
 /// Converts a command, and specified environment variables to user readable string
 ///
-///
 /// Useful for showing usage of a command that uses environment variables for configuration.
 ///
 /// This safer alternative to [`display_with_env_keys`] resolves environment variables from
@@ -845,6 +919,17 @@ where
     I: IntoIterator<Item = O>,
     O: Into<OsString>,
 {
+    display_name_with_env_keys(cmd.name(), env, keys)
+}
+
+fn display_name_with_env_keys<E, K, V, I, O>(name: String, env: E, keys: I) -> String
+where
+    E: IntoIterator<Item = (K, V)>,
+    K: Into<OsString>,
+    V: Into<OsString>,
+    I: IntoIterator<Item = O>,
+    O: Into<OsString>,
+{
     let env = env
         .into_iter()
         .map(|(k, v)| (k.into(), v.into()))
@@ -859,7 +944,7 @@ where
                 env.get(&key).cloned().unwrap_or_else(|| OsString::from(""))
             )
         })
-        .chain([display(cmd)])
+        .chain([name])
         .collect::<Vec<String>>()
         .join(" ")
 }
