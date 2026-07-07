@@ -1,3 +1,4 @@
+#![cfg_attr(command_resolved_envs, feature(command_resolved_envs))]
 //! # Fun Run
 //!
 //! What does the "Zombie Zoom 5K", the "Wibbly wobbly log jog", and the "Turkey Trot" have in common?
@@ -230,6 +231,9 @@ use std::process::Output;
 use std::sync::LazyLock;
 #[cfg(feature = "which_problem")]
 use which_problem::Which;
+
+#[cfg(command_resolved_envs)]
+use std::{collections::HashMap, ffi::OsStr};
 
 mod command;
 
@@ -1291,6 +1295,19 @@ impl std::error::Error for IoErrorAnnotation {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // Nightly CI greps for this test name; update ci.yml if you rename it.
+    #[test]
+    #[cfg(command_resolved_envs)]
+    fn get_resolved_envs_detects_nightly_feature() {
+        let mut cmd = Command::new("does-not-run");
+        cmd.env("FUN_RUN_TEST_VAR", "1");
+        let resolved: HashMap<OsString, OsString> = cmd.get_resolved_envs().collect();
+        assert_eq!(
+            resolved.get(OsStr::new("FUN_RUN_TEST_VAR")),
+            Some(&OsString::from("1"))
+        );
+    }
 
     #[test]
     fn test_status_from_code() {
