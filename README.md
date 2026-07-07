@@ -3,38 +3,8 @@
 # Fun Run
 
 What does the "Zombie Zoom 5K", the "Wibbly wobbly log jog", and the "Turkey Trot" have in common?
-They're runs with a fun name! That's exactly what `fun_run` does. It makes running your Rust [`Command`](https://doc.rust-lang.org/stable/std/process/struct.Command.html)s
-more fun, by naming them.
-
-## What is Fun Run?
-
-Fun run is designed for the use case where not only do you want to run a [`Command`](https://doc.rust-lang.org/stable/std/process/struct.Command.html) you want to
-output what you're running and what happened. Building a CLI tool is a great use case. Another is
-creating [a buildpack](https://github.com/heroku/buildpacks-ruby/tree/4f514f6046568ada523eefd41b3024f86f1c67ce).
-
-Here's some things you can do with fun_run:
-
-- Advertise the command being run before execution
-- Customize how commands are displayed
-- Return error messages with the command name.
-- Turn non-zero status results into an error
-- Embed stdout and stderr into errors (when not streamed)
-- Store stdout and stderr for debug and diagnosis without displaying them (when streamed)
-
-Just like you don't need to dress up in a giant turkey costume to run a 5K you also don't **need**
-`fun_run` to do these things. Though, unlike the turkey costume, using `fun_run` will also make the
-experience easier.
-
-## Install
-
-```shell
-$ cargo add fun_run
-```
-
-## Ready to Roll
-
-For a quick and easy fun run you can use the `fun_run::CommandWithName` trait extension to stream
-output:
+They're runs with a fun name! The `fun_run` library adds display and safety features to make
+running with Rust's [`Command`](https://doc.rust-lang.org/stable/std/process/struct.Command.html)-s better for you and your users.
 
 ```rust
 use fun_run::CommandWithName;
@@ -50,21 +20,37 @@ println!("Running `{name}`", name = cmd.name());
 // Turn non-zero status results into an error
 let result = cmd
     .stream_output(std::io::stdout(), std::io::stderr());
-
-// Command name is persisted on success or failure
-match result {
-    Ok(output) => {
-        assert_eq!("bundle install", &output.name())
-    },
-    Err(cmd_error) => {
-        assert_eq!("bundle install", &cmd_error.name())
-    }
-}
 ```
+
+## Install
+
+```shell
+$ cargo add fun_run
+```
+
+## What is Fun Run?
+
+Fun run is designed for the use case where not only do you want to run a [`Command`](https://doc.rust-lang.org/stable/std/process/struct.Command.html), you want to
+output the command you're running and what happened (stdout/stderr). Building a CLI tool is a
+great use case. Another is creating [a buildpack](https://github.com/heroku/buildpacks-ruby/tree/4f514f6046568ada523eefd41b3024f86f1c67ce).
+
+Here's some things you can do with fun_run:
+
+- Advertise the command being run before execution
+- Customize how commands are displayed
+- Return error messages with the command name.
+- Turn non-zero status results into an error
+- Embed stdout and stderr into errors (when not streamed)
+- Store stdout and stderr for debug and diagnosis without displaying them (when streamed)
+
+Just like you don't need to dress up in a giant turkey costume to run a 5K you also don't **need**
+`fun_run` to do these things. Though, unlike the turkey costume, using `fun_run` will also make the
+experience easier.
 
 ## Pretty (good) errors
 
-Fun run comes with nice errors by default:
+Safe by default. Non-zero exit status produce [`CmdError`](https://docs.rs/fun_run/latest/fun_run/enum.CmdError.html) errors. Errors show the name
+of the function you just ran. Fun!
 
 ```rust
 use fun_run::CommandWithName;
@@ -73,12 +59,16 @@ use std::process::Command;
 let mut cmd = Command::new("becho");
 cmd.args(["hello", "world"]);
 
-let expected = r#"Could not run command `becho hello world`. No such file or directory"#;
 match cmd.stream_output(std::io::stdout(), std::io::stderr()) {
     Ok(_) => todo!(),
     Err(cmd_error) => {
-        let actual = cmd_error.to_string();
-        assert!(actual.contains(expected), "Expected {actual:?} to contain {expected:?}, but it did not")
+        assert!(
+            cmd_error
+                .to_string()
+                .contains(
+                    "Could not run command `becho hello world`. No such file or directory"
+                )
+        )
     }
 }
 ```
@@ -204,7 +194,7 @@ found, or if it was found, it couldn't be launched, for example due to a permiss
 [which_problem](https://github.com/schneems/which_problem) crate is designed to add debugging errors
 to help you identify why the command couldn't be launched.
 
-The name `which_problem` works like `which` but helps you identify common mistakes such as typos:
+The crate `which_problem` works like `which` but helps you identify common mistakes such as typos:
 
 ```shell
 $ cargo whichp zuby
