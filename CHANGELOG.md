@@ -1,6 +1,7 @@
 ## Unreleased
 
 - Introduce `CmdError::output` for easy retrieval of the named output if the command ran.
+- Introduce `fun_run::display_env_keys()` (for nightly users). This pulls environment variables from the command (using a nightly feature) andprovides a better interface than `fun_run::display_with_env_keys` (which requires externally inserted environment variables). If this feature is stabalized in Rust then `display_with_env_keys` will be deprecated.
 
 ## 0.7.0
 

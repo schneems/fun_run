@@ -222,7 +222,8 @@
 
 use command::output_and_write_streams;
 use regex::Regex;
-use std::ffi::OsString;
+use std::collections::HashMap;
+use std::ffi::{OsStr, OsString};
 use std::fmt::Display;
 use std::io::Write;
 use std::process::Command;
@@ -231,9 +232,6 @@ use std::process::Output;
 use std::sync::LazyLock;
 #[cfg(feature = "which_problem")]
 use which_problem::Which;
-
-#[cfg(command_resolved_envs)]
-use std::{collections::HashMap, ffi::OsStr};
 
 mod command;
 
@@ -768,20 +766,48 @@ static QUOTE_ARG_RE: LazyLock<Regex> =
 pub fn display(command: &mut Command) -> String {
     vec![command.get_program().to_string_lossy().to_string()]
         .into_iter()
-        .chain(
-            command
-                .get_args()
-                .map(std::ffi::OsStr::to_string_lossy)
-                .map(|arg| {
-                    if QUOTE_ARG_RE.is_match(&arg) {
-                        format!("{arg:?}")
-                    } else {
-                        format!("{arg}")
-                    }
-                }),
-        )
+        .chain(command.get_args().map(OsStr::to_string_lossy).map(|arg| {
+            if QUOTE_ARG_RE.is_match(&arg) {
+                format!("{arg:?}")
+            } else {
+                format!("{arg}")
+            }
+        }))
         .collect::<Vec<String>>()
         .join(" ")
+}
+
+/// Converts a command, and specified environment variables to user readable string
+///
+///
+/// Useful for showing usage of a command that uses environment variables for configuration.
+///
+/// This safer alternative to [`display_with_env_keys`] resolves environment variables from
+/// [`Command::get_resolved_envs`]. That function will automatically account for
+/// inherited environment variables and any env modifications such as [`Command::env_clear`]
+/// or [`Command::env_remove`.
+///
+/// ## Example
+///
+/// ```rust
+/// use std::process::Command;
+/// use fun_run;
+///
+/// let mut command = Command::new("bundle");
+/// command.arg("install").envs([("RAILS_ENV", "production")]);
+///
+/// let name = fun_run::display_env_keys(&mut command, ["RAILS_ENV"]);
+/// assert_eq!(String::from(r#"RAILS_ENV="production" bundle install"#), name);
+/// ```
+#[must_use]
+#[cfg(command_resolved_envs)]
+pub fn display_env_keys<T, K>(cmd: &mut Command, keys: T) -> String
+where
+    T: IntoIterator<Item = K>,
+    K: Into<OsString>,
+{
+    let env: HashMap<OsString, OsString> = cmd.get_resolved_envs().collect();
+    display_with_env_keys(cmd, env, keys)
 }
 
 /// Converts a command, arguments, and specified environment variables to user readable string
@@ -822,7 +848,7 @@ where
     let env = env
         .into_iter()
         .map(|(k, v)| (k.into(), v.into()))
-        .collect::<std::collections::HashMap<OsString, OsString>>();
+        .collect::<HashMap<OsString, OsString>>();
 
     keys.into_iter()
         .map(|key| {
