@@ -804,6 +804,12 @@ pub fn display(command: &mut Command) -> String {
 /// let name = fun_run::display_with_env_keys(&mut command, &env, ["RAILS_ENV"]);
 /// assert_eq!(String::from(r#"RAILS_ENV="production" bundle install"#), name);
 /// ```
+///
+/// There's no guarantee that the env provided was passed to construct the Command.
+/// A [`Command`] can also inherit environment variables from the parent.
+///
+/// Note that [`Command::env_clear`] and [`Command::env_remove`] both change the Command's
+/// env var inheritance behavior.
 #[must_use]
 pub fn display_with_env_keys<E, K, V, I, O>(cmd: &mut Command, env: E, keys: I) -> String
 where
