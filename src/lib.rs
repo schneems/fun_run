@@ -755,7 +755,7 @@ static QUOTE_ARG_RE: LazyLock<Regex> =
 
 /// Converts a command and its arguments into a user readable string
 ///
-/// Example
+/// # Examples
 ///
 /// ```rust
 /// use std::process::Command;
@@ -786,7 +786,9 @@ pub fn display(command: &mut Command) -> String {
 
 /// Converts a command, arguments, and specified environment variables to user readable string
 ///
-/// Example
+/// Useful for showing usage of a command that uses environment variables for configuration.
+///
+/// # Examples
 ///
 /// ```rust
 /// use std::process::Command;
