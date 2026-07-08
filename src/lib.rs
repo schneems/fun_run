@@ -70,7 +70,7 @@
 //!
 //! ## Nightly-only items
 //!
-//! A few items (`display_env_keys` and `CommandWithName::named_keys`) require a
+//! A few items (`display_env_keys` and `CommandWithName::named_env_vars`) require a
 //! nightly toolchain. They depend on the unstable
 //! [`command_resolved_envs`](https://github.com/rust-lang/rust/issues/149070)
 //! feature, auto-detected at build time, and are absent on stable. Because
@@ -331,12 +331,17 @@ pub trait CommandWithName {
 
     /// Adds given environment variables to the command's name
     ///
+    /// Takes an environment variable **key** and if it will be used when the command runs
+    /// prepends the `<key>=<value>` pair to the front of the command.
+    ///
+    /// **Warning:** By default a [`Command`] will inherit environment variables from the parent process.
+    /// Limit environment variables to non-sensitive keys or use [`Command::env_clear`] and explicitly
+    /// [`Command::envs`] to set only what you need.
+    ///
     /// **Note:** Requires a nightly toolchain. This method relies on the unstable
     /// [`command_resolved_envs`](https://github.com/rust-lang/rust/issues/149070)
     /// feature, which is auto-detected at build time. On a stable toolchain it does
     /// not exist, so calling it (or referring to it) will not compile.
-    ///
-    /// Useful for showing usage of a command that uses environment variables for configuration.
     ///
     /// # Examples
     ///
@@ -348,7 +353,7 @@ pub trait CommandWithName {
     ///     .arg("install")
     ///     .env("BUNDLE_WITHOUT", "development:test");
     ///
-    /// let mut cmd = command.named_keys(["BUNDLE_WITHOUT"]);
+    /// let mut cmd = command.named_env_vars(["BUNDLE_WITHOUT"]);
     /// assert_eq!(
     ///     r#"BUNDLE_WITHOUT="development:test" bundle install"#,
     ///     cmd.name()
@@ -369,20 +374,19 @@ pub trait CommandWithName {
     ///     ]);
     ///
     /// let mut cmd = command.named("./bin/bundle install");
-    /// let mut cmd = cmd.named_keys(["BUNDLE_WITHOUT"]);
+    /// let mut cmd = cmd.named_env_vars(["BUNDLE_WITHOUT"]);
     ///
     /// assert_eq!(
     ///     r#"BUNDLE_WITHOUT="development:test" ./bin/bundle install"#,
     ///     cmd.name()
     /// );
     ///
-    /// let mut cmd = cmd.named_keys(["BUNDLE_PATH"]);
+    /// let mut cmd = cmd.named_env_vars(["BUNDLE_PATH"]);
     /// assert_eq!(
     ///     r#"BUNDLE_PATH="vendor/bundle" BUNDLE_WITHOUT="development:test" ./bin/bundle install"#,
     ///     cmd.name()
     /// );
     /// ```
-    ///
     ///
     /// Re-naming a command that previously had an environment variable prepended will NOT
     /// preserve the environment variables.
@@ -393,7 +397,8 @@ pub trait CommandWithName {
     /// a stability guarantee.
     #[cfg(command_resolved_envs)]
     #[allow(clippy::needless_lifetimes)]
-    fn named_keys<'a, T, K>(&'a mut self, keys: T) -> NamedCommand<'a>
+    #[must_use]
+    fn named_env_vars<'a, T, K>(&'a mut self, keys: T) -> NamedCommand<'a>
     where
         T: IntoIterator<Item = K>,
         K: Into<OsString>,
