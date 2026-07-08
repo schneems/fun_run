@@ -31,12 +31,6 @@
 //!     "#}.trim().to_string(),
 //!     error.to_string()
 //! );
-//!
-//! // Both Ok and Err from result store the output for inspection
-//! assert!(
-//!     error.output().unwrap().stdout_lossy()
-//!     .contains("oops all berries")
-//! );
 //! ```
 //!
 //! Run the command quietly, capture stdout/stderr and raise on non-zero exit:
@@ -58,6 +52,21 @@
 //! );
 //! ```
 //!
+//! Output of the command is preserved in success and error cases:
+//!
+//! ```
+//! # use fun_run::CommandWithName;
+//! # use std::process::Command;
+//! # let mut cmd = Command::new("bash");
+//! # cmd.args(["-c", "echo -n oops all berries; exit 1"]);
+//! # let error = cmd.named_output().unwrap_err();
+//! // Both Ok and Err from result store the output for inspection
+//! assert!(
+//!     error.output().unwrap().stdout_lossy()
+//!     .contains("oops all berries")
+//! );
+//! ```
+//!
 //! ## Install
 //!
 //! ```shell
@@ -74,8 +83,9 @@
 //! use std::process::Command;
 //!
 //! let mut cmd = Command::new("bash");
-//! cmd.arg("-c");
-//! cmd.arg("echo -n 'hello world' && exit 1");
+//! cmd
+//!     .args(["-eo", "pipefail", "-c"])
+//!     .arg("echo -n 'hello world' && exit 1");
 //!
 //! let mut renamed_cmd = cmd.named("echo 'hello world'");
 //!
@@ -225,70 +235,14 @@ mod command;
 
 /// CommandWithName trait
 ///
-/// - [`Command::named_output`] - Runs the command and produces a Result with [`NamedOutput`] or
+/// - [`CommandWithName::named_output`] - Runs the command and produces a Result with [`NamedOutput`] or
 ///   [`CmdError`]. Does NOT stream the output. Will Err on a non-zero output.
-/// - [`Command::stream_output`] - Runs the command while streaming the output to the given [`Write`]
+/// - [`CommandWithName::stream_output`] - Runs the command while streaming the output to the given [`Write`]
 ///   arguments. Returns a Result with [`NamedOutput`] or [`CmdError`]. Will Err on a non-zero output.
-/// - [`Command::name`] - Returns a displayable String of the command's name.
+/// - [`CommandWithName::name`] - Returns a displayable String of the command's name.
+/// - [`CommandWithName::named`] - Rename a command
+/// - [`CommandWithName::named_fn`] - Rename a command with a function
 ///
-/// ## Examples
-///
-/// Rename your commands:
-///
-/// ```no_run
-/// use fun_run::CommandWithName;
-/// use std::process::Command;
-///
-/// let result = Command::new("gem")
-///     .args(["install", "bundler", "-v", "2.4.1.7"])
-///     // Overwrites default command name which would include extra arguments
-///     .named("gem install")
-///     .stream_output(std::io::stdout(), std::io::stderr());
-///
-/// match result {
-///     Ok(output) => {
-///         assert_eq!("bundle install", &output.name())
-///     },
-///     Err(variant) => {
-///         assert_eq!("bundle install", &variant.name())
-///     }
-/// }
-/// ```
-///
-/// Or include important env vars in the name:
-///
-/// ```no_run
-/// use fun_run::{self, CommandWithName};
-/// use std::process::Command;
-/// use std::collections::HashMap;
-///
-/// let env = std::env::vars_os().collect::<HashMap<_, _>>();
-///
-///  let result = Command::new("gem")
-///      .args(["install", "bundler", "-v", "2.4.1.7"])
-///      .envs(&env)
-///      // Overwrites default command name
-///      .named_fn(|cmd| {
-///          // Annotate command with GEM_HOME env var
-///          fun_run::display_with_env_keys(cmd, &env, ["GEM_HOME"])
-///      })
-///      .stream_output(std::io::stdout(), std::io::stderr());
-///
-///  match result {
-///      Ok(output) => {
-///          assert_eq!(
-///              "GEM_HOME=\"/usr/bin/local/.gems\" gem install bundler -v 2.4.1.7",
-///              &output.name()
-///          )
-///      }
-///      Err(variant) => {
-///          assert_eq!(
-///              "GEM_HOME=\"/usr/bin/local/.gems\" gem install bundler -v 2.4.1.7",
-///              &variant.name()
-///          )
-///      }
-///  }
-/// ```
 pub trait CommandWithName {
     /// Returns the desired display name of the command
     ///
@@ -316,14 +270,13 @@ pub trait CommandWithName {
     ///
     /// Alternatively see [CommandWithName::named_fn]
     ///
-    /// Example:
+    /// # Examples
     ///
     /// ```
     /// use fun_run::CommandWithName;
     ///
     /// let mut command = std::process::Command::new("bin/bundle");
-    /// command.arg("install");
-    /// command.arg("--no-doc");
+    /// command.args(["install", "--no-doc"]);
     ///
     /// assert_eq!("bin/bundle install --no-doc", command.name());
     ///
@@ -341,9 +294,9 @@ pub trait CommandWithName {
     /// This can be useful if a part of the command is distracting or surprising or if you
     /// desire to include additional information such as displaying environment variables.
     ///
-    /// Alternatively see [`Command::named`]
+    /// Alternatively see [`CommandWithName::named`]
     ///
-    /// Example:
+    /// # Examples
     ///
     /// ```
     /// use fun_run::{CommandWithName, display_with_env_keys};
@@ -370,6 +323,25 @@ pub trait CommandWithName {
     /// It's like [`Command::output`] but all the outputs carry the name of the original
     /// command. Will Err on non-zero exit.
     ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use fun_run::CommandWithName;
+    /// use std::process::Command;
+    ///
+    /// let mut cmd = Command::new("echo");
+    /// cmd.args(["-n", "hello world"]);
+    ///
+    /// // Do NOT stream output to user
+    /// // Turn non-zero status results into an error
+    /// let result = cmd.named_output();
+    ///
+    /// assert_eq!(
+    ///     result.unwrap().stdout_lossy(),
+    ///     "hello world".to_string()
+    /// );
+    /// ```
+    ///
     /// # Errors
     ///
     /// - Returns [`CmdError::SystemError`] if the system is unable to run the command.
@@ -391,6 +363,26 @@ pub trait CommandWithName {
     ///
     /// Similar to calling [`Command::spawn`], but the output of the command is preserved, and
     /// all outputs of the Result carry the name of the original command. Will Err on non-zero exit.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use fun_run::CommandWithName;
+    /// use std::process::Command;
+    ///
+    /// let mut cmd = Command::new("echo");
+    /// cmd.args(["-n", "hello world"]);
+    ///
+    /// // Stream output to the end user
+    /// // Turn non-zero status results into an error
+    /// let result = cmd
+    ///     .stream_output(std::io::stdout(), std::io::stderr());
+    ///
+    /// assert_eq!(
+    ///     result.unwrap().stdout_lossy(),
+    ///     "hello world".to_string()
+    /// );
+    /// ```
     ///
     /// # Errors
     ///
@@ -522,7 +514,7 @@ impl CommandWithName for &mut NamedCommand<'_> {
 ///
 /// The primary use case is exercising a function that takes [`NamedOutput`] in its arguments in a test.
 ///
-/// ## Example
+/// # Examples
 ///
 /// ```
 /// use fun_run::OutputWithName;
@@ -991,7 +983,7 @@ impl std::error::Error for CmdError {
 impl CmdError {
     /// Returns a display representation of the command that failed
     ///
-    /// Example:
+    /// # Examples
     ///
     /// ```no_run
     /// use fun_run::CommandWithName;
