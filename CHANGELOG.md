@@ -1,5 +1,7 @@
 ## Unreleased
 
+- Introduce `CmdError::output` for easy retrieval of the named output if the command ran.
+
 ## 0.7.0
 
 - Update documentation (https://github.com/schneems/fun_run/pull/16)
