@@ -1079,6 +1079,15 @@ impl CmdError {
         }
     }
 
+    /// Returns named output if the command ran
+    pub fn output(&self) -> Option<&NamedOutput> {
+        match self {
+            CmdError::SystemError(_, _) => None,
+            CmdError::NonZeroExitNotStreamed(named_output) => Some(named_output),
+            CmdError::NonZeroExitAlreadyStreamed(named_output) => Some(named_output),
+        }
+    }
+
     /// Returns the OS [`ExitStatus`] of the command.
     ///
     /// For [`CmdError::SystemError`] the command never ran, so there is no real
