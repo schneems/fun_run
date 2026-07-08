@@ -68,15 +68,6 @@
 //! );
 //! ```
 //!
-//! ## Nightly-only items
-//!
-//! A few items (`display_env_vars` and `CommandWithName::named_env_vars`) require a
-//! nightly toolchain. They depend on the unstable
-//! [`command_resolved_envs`](https://github.com/rust-lang/rust/issues/149070)
-//! feature, auto-detected at build time, and are absent on stable. Because
-//! <https://docs.rs> builds on nightly, these appear in the published docs even
-//! though stable users cannot use them.
-//!
 //! ## Install
 //!
 //! ```shell
@@ -228,6 +219,15 @@
 //!
 //! Note that `which_problem` integration is not enabled by default because it outputs information
 //! about the contents of your disk such as layout and file permissions.
+//!
+//! ## Nightly-only items
+//!
+//! A few items (`display_env_vars` and `CommandWithName::named_env_vars`) require a
+//! nightly toolchain. They depend on the unstable
+//! [`command_resolved_envs`](https://github.com/rust-lang/rust/issues/149070)
+//! feature, auto-detected at build time, and are absent on stable. Because
+//! <https://docs.rs> builds on nightly, these appear in the published docs even
+//! though stable users cannot use them.
 
 use command::output_and_write_streams;
 use regex::Regex;
