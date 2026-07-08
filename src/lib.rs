@@ -70,7 +70,7 @@
 //!
 //! ## Nightly-only items
 //!
-//! A few items (`display_env_keys` and `CommandWithName::named_env_vars`) require a
+//! A few items (`display_env_vars` and `CommandWithName::named_env_vars`) require a
 //! nightly toolchain. They depend on the unstable
 //! [`command_resolved_envs`](https://github.com/rust-lang/rust/issues/149070)
 //! feature, auto-detected at build time, and are absent on stable. Because
@@ -873,17 +873,22 @@ pub fn display(command: &mut Command) -> String {
 
 /// Converts a command, and specified environment variables to user readable string
 ///
-/// **Note:** Requires a nightly toolchain. This function relies on the unstable
-/// [`command_resolved_envs`](https://github.com/rust-lang/rust/issues/149070)
-/// feature, which is auto-detected at build time. On a stable toolchain it does
-/// not exist, so calling it (or referring to it) will not compile.
+/// Takes an environment variable **key** and if it will be used when the command runs
+/// prepends the `<key>=<value>` pair to the front of the command.
 ///
-/// Useful for showing usage of a command that uses environment variables for configuration.
+/// **Warning:** By default a [`Command`] will inherit environment variables from the parent process.
+/// Limit environment variables to non-sensitive keys or use [`Command::env_clear`] and explicitly
+/// [`Command::envs`] to set only what you need.
 ///
 /// This safer alternative to [`display_with_env_keys`] resolves environment variables from
 /// [`Command::get_resolved_envs`]. That function will automatically account for
 /// inherited environment variables and any env modifications such as [`Command::env_clear`]
 /// or [`Command::env_remove`].
+///
+/// **Note:** Requires a nightly toolchain. This function relies on the unstable
+/// [`command_resolved_envs`](https://github.com/rust-lang/rust/issues/149070)
+/// feature, which is auto-detected at build time. On a stable toolchain it does
+/// not exist, so calling it (or referring to it) will not compile.
 ///
 /// # Examples
 ///
@@ -894,12 +899,12 @@ pub fn display(command: &mut Command) -> String {
 /// let mut command = Command::new("bundle");
 /// command.arg("install").envs([("RAILS_ENV", "production")]);
 ///
-/// let name = fun_run::display_env_keys(&mut command, ["RAILS_ENV"]);
+/// let name = fun_run::display_env_vars(&mut command, ["RAILS_ENV"]);
 /// assert_eq!(String::from(r#"RAILS_ENV="production" bundle install"#), name);
 /// ```
-#[must_use]
 #[cfg(command_resolved_envs)]
-pub fn display_env_keys<T, K>(cmd: &mut Command, keys: T) -> String
+#[must_use]
+pub fn display_env_vars<T, K>(cmd: &mut Command, keys: T) -> String
 where
     T: IntoIterator<Item = K>,
     K: Into<OsString>,
