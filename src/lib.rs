@@ -1,27 +1,71 @@
 //! # Fun Run
 //!
 //! What does the "Zombie Zoom 5K", the "Wibbly wobbly log jog", and the "Turkey Trot" have in common?
-//! They're runs with a fun name! That's exactly what `fun_run` does. It makes running your Rust [`Command`]s
-//! more fun, by naming them.
+//! They're runs with a fun name! The `fun_run` library adds display and safety features to make
+//! running a Rust [`Command`] better for you and your users.
 //!
-//! ## What is Fun Run?
+//! Stream the command and raise on non-zero exit:
 //!
-//! Fun run is designed for the use case where not only do you want to run a [`Command`] you want to
-//! output what you're running and what happened. Building a CLI tool is a great use case. Another is
-//! creating [a buildpack](https://github.com/heroku/buildpacks-ruby/tree/4f514f6046568ada523eefd41b3024f86f1c67ce).
+//! ```rust
+//! use fun_run::CommandWithName;
+//! use std::process::Command;
 //!
-//! Here's some things you can do with fun_run:
+//! let mut cmd = Command::new("bash");
+//! cmd.args(["-c", "echo -n oops all berries; exit 1"]);
 //!
-//! - Advertise the command being run before execution
-//! - Customize how commands are displayed
-//! - Return error messages with the command name.
-//! - Turn non-zero status results into an error
-//! - Embed stdout and stderr into errors (when not streamed)
-//! - Store stdout and stderr for debug and diagnosis without displaying them (when streamed)
+//! // Advertise the command being run before execution
+//! println!("Running `{name}`", name = cmd.name());
 //!
-//! Just like you don't need to dress up in a giant turkey costume to run a 5K you also don't **need**
-//! `fun_run` to do these things. Though, unlike the turkey costume, using `fun_run` will also make the
-//! experience easier.
+//! // Stream output to the end user
+//! // Turn non-zero status results into an error
+//! let error = cmd
+//!     .stream_output(std::io::stdout(), std::io::stderr())
+//!     .unwrap_err();
+//!
+//! assert_eq!(
+//!     indoc::indoc!{r#"
+//!         Command failed `bash -c "echo -n oops all berries; exit 1"`
+//!         exit status: 1
+//!         stdout: <see above>
+//!         stderr: <see above>
+//!     "#}.trim().to_string(),
+//!     error.to_string()
+//! );
+//! ```
+//!
+//! Run the command quietly, capture stdout/stderr and raise on non-zero exit:
+//!
+//! ```
+//! # use fun_run::CommandWithName;
+//! # use std::process::Command;
+//! # let mut cmd = Command::new("bash");
+//! # cmd.args(["-c", "echo -n oops all berries; exit 1"]);
+//! let error = cmd.named_output().unwrap_err();
+//! assert_eq!(
+//!     indoc::indoc!{r#"
+//!         Command failed `bash -c "echo -n oops all berries; exit 1"`
+//!         exit status: 1
+//!         stdout: oops all berries
+//!         stderr: <empty>
+//!     "#}.trim().to_string(),
+//!     error.to_string()
+//! );
+//! ```
+//!
+//! Output of the command is preserved in success and error cases:
+//!
+//! ```
+//! # use fun_run::CommandWithName;
+//! # use std::process::Command;
+//! # let mut cmd = Command::new("bash");
+//! # cmd.args(["-c", "echo -n oops all berries; exit 1"]);
+//! # let error = cmd.named_output().unwrap_err();
+//! // Both Ok and Err from result store the output for inspection
+//! assert!(
+//!     error.output().unwrap().stdout_lossy()
+//!     .contains("oops all berries")
+//! );
+//! ```
 //!
 //! ## Install
 //!
@@ -29,134 +73,7 @@
 //! $ cargo add fun_run
 //! ```
 //!
-//! ## Ready to Roll
-//!
-//! For a quick and easy fun run you can use the `fun_run::CommandWithName` trait extension to stream
-//! output:
-//!
-//! ```rust,no_run
-//! use fun_run::CommandWithName;
-//! use std::process::Command;
-//!
-//! let mut cmd = Command::new("bundle");
-//! cmd.args(["install"]);
-//!
-//! // Advertise the command being run before execution
-//! println!("Running `{name}`", name = cmd.name());
-//!
-//! // Stream output to the end user
-//! // Turn non-zero status results into an error
-//! let result = cmd
-//!     .stream_output(std::io::stdout(), std::io::stderr());
-//!
-//! // Command name is persisted on success or failure
-//! match result {
-//!     Ok(output) => {
-//!         assert_eq!("bundle install", &output.name())
-//!     },
-//!     Err(cmd_error) => {
-//!         assert_eq!("bundle install", &cmd_error.name())
-//!     }
-//! }
-//! ```
-//!
-//! ## Pretty (good) errors
-//!
-//! Fun run comes with nice errors by default:
-//!
-//! ```rust
-//! use fun_run::CommandWithName;
-//! use std::process::Command;
-//!
-//! let mut cmd = Command::new("becho");
-//! cmd.args(["hello", "world"]);
-//!
-//! let expected = r#"Could not run command `becho hello world`. No such file or directory"#;
-//! match cmd.stream_output(std::io::stdout(), std::io::stderr()) {
-//!     Ok(_) => todo!(),
-//!     Err(cmd_error) => {
-//!         let actual = cmd_error.to_string();
-//!         assert!(actual.contains(expected), "Expected {actual:?} to contain {expected:?}, but it did not")
-//!     }
-//! }
-//! ```
-//!
-//! And commands that don't return an exit code 0 return an Err so you don't accidentally ignore a
-//! failure, and the output of the command is captured:
-//!
-//! ```rust
-//! use fun_run::CommandWithName;
-//! use std::process::Command;
-//!
-//! let mut cmd = Command::new("bash");
-//! cmd.arg("-c");
-//! cmd.arg("echo -n 'hello world' && exit 1");
-//!
-//! // Quietly gets output
-//! match cmd.named_output() {
-//!     Ok(_) => todo!(),
-//!     Err(cmd_error) => {
-//!         let expected = r#"
-//! Command failed `bash -c "echo -n 'hello world' && exit 1"`
-//! exit status: 1
-//! stdout: hello world
-//! stderr: <empty>
-//!         "#;
-//!
-//!         let actual = cmd_error.to_string();
-//!         assert!(
-//!             actual.trim().contains(expected.trim()),
-//!             "Expected {:?} to contain {:?}, but it did not", actual.trim(), expected.trim()
-//!         )
-//!     }
-//! }
-//! ```
-//!
-//! By default, streamed output won't duplicated in error messages (but is still there if you want
-//! to inspect it in your program):
-//!
-//! ```rust
-//! use fun_run::CommandWithName;
-//! use std::process::Command;
-//!
-//! let mut cmd = Command::new("bash");
-//! cmd.arg("-c");
-//! cmd.arg("echo -n 'hello world' && exit 1");
-//!
-//!
-//! let expected = r#"
-//! Command failed `bash -c "echo -n 'hello world' && exit 1"`
-//! exit status: 1
-//! stdout: <see above>
-//! stderr: <see above>
-//! "#;
-//!
-//! // Quietly gets output
-//! match cmd.stream_output(std::io::stdout(), std::io::stderr()) {
-//!     Ok(_) => todo!(),
-//!     Err(cmd_error) => {
-//!         let actual = cmd_error.to_string();
-//!         assert!(
-//!             actual.trim().contains(expected.trim()),
-//!             "Expected {:?} to contain {:?}, but it did not", actual.trim(), expected.trim()
-//!         );
-//!
-//!         let named_output: fun_run::NamedOutput = cmd_error.into();
-//!
-//!         assert_eq!(
-//!             "hello world",
-//!             named_output.stdout_lossy().trim()
-//!         );
-//!
-//!         assert_eq!(
-//!             "bash -c \"echo -n 'hello world' && exit 1\"",
-//!             named_output.name()
-//!         );
-//!     }
-//! }
-//! ```
-//!
-//! ## Renaming
+//! ## Renaming a command
 //!
 //! If you need to provide an alternate display for your command you can rename it, this is useful
 //! for omitting implementation details.
@@ -166,8 +83,9 @@
 //! use std::process::Command;
 //!
 //! let mut cmd = Command::new("bash");
-//! cmd.arg("-c");
-//! cmd.arg("echo -n 'hello world' && exit 1");
+//! cmd
+//!     .args(["-eo", "pipefail", "-c"])
+//!     .arg("echo -n 'hello world' && exit 1");
 //!
 //! let mut renamed_cmd = cmd.named("echo 'hello world'");
 //!
@@ -196,57 +114,10 @@
 //! assert_eq!(r#"RAILS_ENV="production" bundle install"#, renamed_cmd.name())
 //! ```
 //!
-//! ## Debugging system failures with `which_problem`
-//!
-//! When a command execution returns an Err due to a system error (and not because the program it
-//! executed launched but returned non-zero status), it's usually because the executable couldn't be
-//! found, or if it was found, it couldn't be launched, for example due to a permissions error. The
-//! [which_problem](https://github.com/schneems/which_problem) crate is designed to add debugging errors
-//! to help you identify why the command couldn't be launched.
-//!
-//! The name `which_problem` works like `which` but helps you identify common mistakes such as typos:
-//!
-//! ```shell
-//! $ cargo whichp zuby
-//! Program "zuby" not found
-//!
-//! Info: No other executables with the same name are found on the PATH
-//!
-//! Info: These executables have the closest spelling to "zuby" but did not match:
-//!       "hub", "ruby", "subl"
-//! ```
-//!
-//! Fun run supports `which_problem` integration through the `which_problem` feature. In your `Cargo.toml`:
-//!
-//! ```toml
-//! # Cargo.toml
-//! fun_run = { version = <version.here>, features = ["which_problem"] }
-//! ```
-//!
-//! And annotate errors:
-//!
-//! ```rust,no_run
-//! use fun_run::CommandWithName;
-//! use std::process::Command;
-//!
-//! let mut cmd = Command::new("becho");
-//! cmd.args(["hello", "world"]);
-//!
-//! #[cfg(feature = "which_problem")]
-//! cmd.stream_output(std::io::stdout(), std::io::stderr())
-//!     .map_err(|error| fun_run::map_which_problem(error, cmd.mut_cmd(), std::env::var_os("PATH"))).unwrap();
-//! ```
-//!
-//! Now if the system cannot find a `becho` program on your system the output will give you all the
-//! info you need to diagnose the underlying issue.
-//!
-//! Note that `which_problem` integration is not enabled by default because it outputs information
-//! about the contents of your disk such as layout and file permissions.
-//!
 //! ## What won't it do?
 //!
 //! The `fun_run` library doesn't support executing a [`Command`] in ways that do not produce an
-//! [`Output`], for example calling [`Command::spawn`](https://doc.rust-lang.org/std/process/struct.Command.html#method.spawn) returns a `Result<std::process::Child, std::io::Error>`
+//! [`Output`], for example calling [`Command::spawn`](https://doc.rust-lang.org/std/process/struct.Command.html#method.spawn) returns a [`std::process::Child`]
 //! (Which doesn't contain an [`Output`]). If you want to run-for-fun in the background, spawn a thread
 //! and join it manually:
 //!
@@ -276,37 +147,77 @@
 //! }
 //! ```
 //!
-//! ## FUN(ctional)
-//!
-//! If you don't want to use the trait, you can still use `fun_run` by functionally mapping the
-//! features you want:
-//!
-//! ```no_run
-//! let mut cmd = std::process::Command::new("bundle");
-//! cmd.args(["install"]);
-//!
-//! let name = fun_run::display(&mut cmd);
-//!
-//! cmd.output()
-//!     .map_err(|error| fun_run::on_system_error(name.clone(), error))
-//!     .and_then(|output| fun_run::nonzero_captured(name.clone(), output))
-//!     .unwrap();
-//! ```
-//!
-//! Here's some fun functions you can use to help you run:
-//!
-//! - [`on_system_error`] - Convert [`std::io::Error`] into [`CmdError`]
-//! - [`nonzero_streamed`] - Produces a [`NamedOutput`] from [`Output`] that has already been streamed to
-//!   the user
-//! - [`nonzero_captured`] - Like [`nonzero_streamed`] but for when the user hasn't already seen the
-//!   output
-//! - [`display`] - Converts an `&mut Command` into a human readable string
-//! - [`display_with_env_keys`] - Like [`display`] but selectively shows environment variables.
-//!
 //! ## Async
 //!
 //! This library uses synchronous command execution. If you’re using this library in an async context,
-//! you’ll want to use an async wrapper like [tokio::task::block_in_place](https://docs.rs/tokio/latest/tokio/task/fn.block_in_place.html).
+//! you’ll want to use an async wrapper like [tokio::task::spawn_blocking](https://docs.rs/tokio/latest/tokio/task/fn.spawn_blocking.html).
+//!
+//! ## Clippy
+//!
+//! To ensure all commands have their exit status checked you can add this to your `clippy.toml` to
+//! prevent accidentally spawning an un-checked plain [`Command`]:
+//!
+//! ```toml
+//! [[disallowed-methods]]
+//! path = "std::process::Command::output"
+//! reason = "Use fun_run::CommandWithName::named_output"
+//!
+//! [[disallowed-methods]]
+//! path = "std::process::Command::status"
+//! reason = "Use fun_run::CommandWithName::named_output and read the status from the result"
+//!
+//! [[disallowed-methods]]
+//! path = "std::process::Command::spawn"
+//! reason = "Use fun_run::CommandWithName::stream_output(std::io::stdout(), std::io::stderr())"
+//! ```
+//!
+//! ## Debugging system failures with `which_problem`
+//!
+//! When a command execution returns an Err due to a system error (and not because the program it
+//! executed launched but returned non-zero status), it's usually because the executable couldn't be
+//! found, or if it was found, it couldn't be launched, for example due to a permissions error. The
+//! [which_problem](https://github.com/schneems/which_problem) crate is designed to add debugging errors
+//! to help you identify why the command couldn't be launched.
+//!
+//! The crate `which_problem` works like `which` but helps you identify common mistakes such as typos:
+//!
+//! ```shell
+//! $ cargo whichp zuby
+//! Program "zuby" not found
+//!
+//! Info: No other executables with the same name are found on the PATH
+//!
+//! Info: These executables have the closest spelling to "zuby" but did not match:
+//!       "hub", "ruby", "subl"
+//! ```
+//!
+//! Fun run supports `which_problem` integration through the `which_problem` feature. In your `Cargo.toml`:
+//!
+//! ```toml
+//! # Cargo.toml
+//! fun_run = { version = <version.here>, features = ["which_problem"] }
+//! ```
+//!
+//! And annotate errors:
+//!
+//! ```rust,no_run
+//! #[cfg(not(feature = "which_problem"))] { return; }
+//! use fun_run::CommandWithName;
+//! use std::process::Command;
+//!
+//! let mut cmd = Command::new("becho");
+//! cmd.args(["hello", "world"]);
+//!
+//! #[cfg(feature = "which_problem")]
+//! cmd.stream_output(std::io::stdout(), std::io::stderr())
+//!     .map_err(|error| fun_run::map_which_problem(error, cmd.mut_cmd(), std::env::var_os("PATH"))).unwrap();
+//! ```
+//!
+//! Now if the system cannot find a `becho` program on your system the output will give you all the
+//! info you need to diagnose the underlying issue.
+//!
+//! Note that `which_problem` integration is not enabled by default because it outputs information
+//! about the contents of your disk such as layout and file permissions.
 
 use command::output_and_write_streams;
 use regex::Regex;
@@ -322,69 +233,34 @@ use which_problem::Which;
 
 mod command;
 
-/// Rename your commands:
+/// CommandWithName trait
 ///
-/// ```no_run
-/// use fun_run::CommandWithName;
-/// use std::process::Command;
+/// - [`CommandWithName::named_output`] - Runs the command and produces a Result with [`NamedOutput`] or
+///   [`CmdError`]. Does NOT stream the output. Will Err on a non-zero output.
+/// - [`CommandWithName::stream_output`] - Runs the command while streaming the output to the given [`Write`]
+///   arguments. Returns a Result with [`NamedOutput`] or [`CmdError`]. Will Err on a non-zero output.
+/// - [`CommandWithName::name`] - Returns a displayable String of the command's name.
+/// - [`CommandWithName::named`] - Rename a command
+/// - [`CommandWithName::named_fn`] - Rename a command with a function
 ///
-/// let result = Command::new("gem")
-///     .args(["install", "bundler", "-v", "2.4.1.7"])
-///     // Overwrites default command name which would include extra arguments
-///     .named("gem install")
-///     .stream_output(std::io::stdout(), std::io::stderr());
-///
-/// match result {
-///     Ok(output) => {
-///         assert_eq!("bundle install", &output.name())
-///     },
-///     Err(variant) => {
-///         assert_eq!("bundle install", &variant.name())
-///     }
-/// }
-/// ```
-///
-/// Or include important env vars in the name:
-///
-/// ```no_run
-/// use fun_run::{self, CommandWithName};
-/// use std::process::Command;
-/// use std::collections::HashMap;
-///
-/// let env = std::env::vars_os().collect::<HashMap<_, _>>();
-///
-///  let result = Command::new("gem")
-///      .args(["install", "bundler", "-v", "2.4.1.7"])
-///      .envs(&env)
-///      // Overwrites default command name
-///      .named_fn(|cmd| {
-///          // Annotate command with GEM_HOME env var
-///          fun_run::display_with_env_keys(cmd, &env, ["GEM_HOME"])
-///      })
-///      .stream_output(std::io::stdout(), std::io::stderr());
-///
-///  match result {
-///      Ok(output) => {
-///          assert_eq!(
-///              "GEM_HOME=\"/usr/bin/local/.gems\" gem install bundler -v 2.4.1.7",
-///              &output.name()
-///          )
-///      }
-///      Err(variant) => {
-///          assert_eq!(
-///              "GEM_HOME=\"/usr/bin/local/.gems\" gem install bundler -v 2.4.1.7",
-///              &variant.name()
-///          )
-///      }
-///  }
-/// ```
 pub trait CommandWithName {
     /// Returns the desired display name of the command
+    ///
+    /// ```
+    /// use fun_run::CommandWithName;
+    /// use std::process::Command;
+    ///
+    /// let mut command = Command::new("cargo");
+    /// command.arg("test");
+    ///
+    /// assert_eq!(command.name(), "cargo test".to_string());
+    /// ```
     fn name(&mut self) -> String;
 
     /// Returns a reference to `&mut Command`
     ///
-    /// This is useful for passing to other libraries.
+    /// This is useful for passing to other libraries. This allows [`NamedCommand`]
+    /// and [`Command`] to have a shared interface to the raw command.
     fn mut_cmd(&mut self) -> &mut Command;
 
     /// Rename a command via a given string
@@ -394,14 +270,15 @@ pub trait CommandWithName {
     ///
     /// Alternatively see [CommandWithName::named_fn]
     ///
-    /// Example:
+    /// # Examples
     ///
     /// ```
     /// use fun_run::CommandWithName;
     ///
     /// let mut command = std::process::Command::new("bin/bundle");
-    /// command.arg("install");
-    /// command.arg("--no-doc");
+    /// command.args(["install", "--no-doc"]);
+    ///
+    /// assert_eq!("bin/bundle install --no-doc", command.name());
     ///
     /// let mut cmd = command.named("bundle install");
     /// assert_eq!("bundle install", cmd.name());
@@ -417,18 +294,22 @@ pub trait CommandWithName {
     /// This can be useful if a part of the command is distracting or surprising or if you
     /// desire to include additional information such as displaying environment variables.
     ///
-    /// Alternatively see [CommandWithName::named]
+    /// Alternatively see [`CommandWithName::named`]
     ///
-    /// Example:
+    /// # Examples
     ///
     /// ```
-    /// use fun_run::CommandWithName;
+    /// use fun_run::{CommandWithName, display_with_env_keys};
+    /// use std::env::vars_os;
     ///
-    /// let mut command = std::process::Command::new("bundle");
-    /// command.arg("install");
+    /// let mut command = std::process::Command::new("cargo");
+    /// command.arg("test");
+    /// # unsafe { std::env::set_var("RUST_BACKTRACE", "1")};
     ///
-    /// let mut cmd = command.named_fn(|cmd| cmd.name().replace("bundle", "bin/bundle").to_string());
-    /// assert_eq!("bin/bundle install", cmd.name());
+    /// let mut cmd = command.named_fn(|cmd| {
+    ///     display_with_env_keys(cmd, vars_os(), ["RUST_BACKTRACE"])
+    /// });
+    /// assert_eq!(r#"RUST_BACKTRACE="1" cargo test"#, cmd.name());
     /// ```
     #[allow(clippy::needless_lifetimes)]
     fn named_fn<'a>(&'a mut self, f: impl FnOnce(&mut Command) -> String) -> NamedCommand<'a> {
@@ -439,10 +320,33 @@ pub trait CommandWithName {
 
     /// Runs the command without streaming
     ///
+    /// It's like [`Command::output`] but all the outputs carry the name of the original
+    /// command. Will Err on non-zero exit.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use fun_run::CommandWithName;
+    /// use std::process::Command;
+    ///
+    /// let mut cmd = Command::new("echo");
+    /// cmd.args(["-n", "hello world"]);
+    ///
+    /// // Do NOT stream output to user
+    /// // Turn non-zero status results into an error
+    /// let result = cmd.named_output();
+    ///
+    /// assert_eq!(
+    ///     result.unwrap().stdout_lossy(),
+    ///     "hello world".to_string()
+    /// );
+    /// ```
+    ///
     /// # Errors
     ///
-    /// Returns `CmdError::SystemError` if the system is unable to run the command.
-    /// Returns `CmdError::NonZeroExitNotStreamed` if the exit code is not zero.
+    /// - Returns [`CmdError::SystemError`] if the system is unable to run the command.
+    /// - Returns [`CmdError::NonZeroExitNotStreamed`] if the exit code is not zero. Since the output
+    ///   is not already streamed, displaying this error will include stdout and stderr.
     fn named_output(&mut self) -> Result<NamedOutput, CmdError> {
         let name = self.name();
         self.mut_cmd()
@@ -457,10 +361,35 @@ pub trait CommandWithName {
 
     /// Runs the command and streams to the given writers
     ///
+    /// Similar to calling [`Command::spawn`], but the output of the command is preserved, and
+    /// all outputs of the Result carry the name of the original command. Will Err on non-zero exit.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use fun_run::CommandWithName;
+    /// use std::process::Command;
+    ///
+    /// let mut cmd = Command::new("echo");
+    /// cmd.args(["-n", "hello world"]);
+    ///
+    /// // Stream output to the end user
+    /// // Turn non-zero status results into an error
+    /// let result = cmd
+    ///     .stream_output(std::io::stdout(), std::io::stderr());
+    ///
+    /// assert_eq!(
+    ///     result.unwrap().stdout_lossy(),
+    ///     "hello world".to_string()
+    /// );
+    /// ```
+    ///
     /// # Errors
     ///
-    /// Returns `CmdError::SystemError` if the system is unable to run the command
-    /// Returns `CmdError::NonZeroExitAlreadyStreamed` if the exit code is not zero.
+    /// - Returns [`CmdError::SystemError`] if the system is unable to run the command
+    /// - Returns [`CmdError::NonZeroExitAlreadyStreamed`] if the exit code is not zero.
+    ///   Since the stdout and stderr are already streamed this error will not re-display the
+    ///   stdout and stderr.
     fn stream_output<OW, EW>(
         &mut self,
         stdout_write: OW,
@@ -505,11 +434,11 @@ impl CommandWithName for &mut Command {
 
 /// It's a command, with a name
 ///
-/// This struct allows us to re-name an existing [Command] via the [CommandWithName] trait associated
+/// This struct allows us to re-name an existing [`Command`] via the [`CommandWithName`] trait associated
 /// functions. When one of those functions such as [CommandWithName::named_fn] or [CommandWithName::named]
 /// are called, Rust needs somewhere for the new name string to live, so we move it over into this struct
-/// which also implements [CommandWithName]. You can gain access to the original [Command] reference
-/// via [`CommandWithName::mut_cmd`]
+/// which also implements [`CommandWithName`]. You can gain access to the original [`Command`] reference
+/// via [`CommandWithName::mut_cmd`].
 pub struct NamedCommand<'a> {
     name: String,
     command: &'a mut Command,
@@ -585,7 +514,7 @@ impl CommandWithName for &mut NamedCommand<'_> {
 ///
 /// The primary use case is exercising a function that takes [`NamedOutput`] in its arguments in a test.
 ///
-/// ## Example
+/// # Examples
 ///
 /// ```
 /// use fun_run::OutputWithName;
@@ -755,7 +684,7 @@ impl NamedOutput {
         nonzero_streamed(self.name, self.output)
     }
 
-    /// Return the ExitStatus of the output
+    /// Return the [`ExitStatus`] of the output
     #[must_use]
     pub fn status(&self) -> &ExitStatus {
         &self.output.status
@@ -929,13 +858,13 @@ pub enum CmdError {
     /// ```
     SystemError(String, std::io::Error),
 
-    /// Command booted, but [`ExitStatus::success`] reported that it failed.
+    /// Command booted, was NOT streamed, but [`ExitStatus::success`] reported that it failed.
     ///
     /// Will display the stdout/stderr to the user when displayed (since it wasn't previously)
     /// streamed.
     NonZeroExitNotStreamed(NamedOutput),
 
-    /// Command booted, but [`ExitStatus::success`] reported that it failed.
+    /// Command booted, WAS streamed, but [`ExitStatus::success`] reported that it failed.
     ///
     /// The command WAS streamed to the end user, so stdout/stderr does not
     /// need to be printed again when rendering the error.
@@ -1054,7 +983,7 @@ impl std::error::Error for CmdError {
 impl CmdError {
     /// Returns a display representation of the command that failed
     ///
-    /// Example:
+    /// # Examples
     ///
     /// ```no_run
     /// use fun_run::CommandWithName;
@@ -1095,6 +1024,29 @@ impl CmdError {
     /// [`std::io::Error`] is returned. It is only guaranteed to be non-zero, so
     /// prefer inspecting the [`std::io::Error`] and its [`std::io::ErrorKind`]
     /// directly rather than relying on the exact code.
+    ///
+    /// For more control you can construct your own status:
+    ///
+    /// ```
+    /// #[cfg(not(unix))] { return; }
+    /// use std::process::{Command, ExitStatus};
+    /// use fun_run::{CommandWithName, ExitStatusFromCode};
+    ///
+    /// let mut command = Command::new("becho");
+    /// command
+    ///     .arg("hello world");
+    ///
+    /// let result = command
+    ///     .named_output();
+    ///
+    /// let status = result
+    ///     .unwrap_err()
+    ///     .output()
+    ///     .map(|output| output.status().to_owned())
+    ///     .unwrap_or_else(|| ExitStatus::from_code(1));
+    ///
+    /// assert!(!status.success());
+    /// ```
     pub fn status(&self) -> ExitStatus {
         match self {
             CmdError::SystemError(_, error) => status_from_error(error),
