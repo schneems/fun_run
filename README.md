@@ -49,8 +49,8 @@ experience easier.
 
 ## Pretty (good) errors
 
-Safe by default. Non-zero exit status produce [`CmdError`](https://docs.rs/fun_run/latest/fun_run/enum.CmdError.html) errors. Errors show the name
-of the function you just ran. Fun!
+Safe by default. Non-zero exit status produces [`CmdError`](https://docs.rs/fun_run/latest/fun_run/enum.CmdError.html) errors. Errors show the name
+of the command you just ran. Fun!
 
 ```rust
 use fun_run::CommandWithName;
