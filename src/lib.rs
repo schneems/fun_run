@@ -338,7 +338,7 @@ pub trait CommandWithName {
     ///
     /// Useful for showing usage of a command that uses environment variables for configuration.
     ///
-    /// ## Example
+    /// # Examples
     ///
     /// ```
     /// use fun_run::CommandWithName;
@@ -878,9 +878,9 @@ pub fn display(command: &mut Command) -> String {
 /// This safer alternative to [`display_with_env_keys`] resolves environment variables from
 /// [`Command::get_resolved_envs`]. That function will automatically account for
 /// inherited environment variables and any env modifications such as [`Command::env_clear`]
-/// or [`Command::env_remove`.
+/// or [`Command::env_remove`].
 ///
-/// ## Example
+/// # Examples
 ///
 /// ```rust
 /// use std::process::Command;
