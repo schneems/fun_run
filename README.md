@@ -4,7 +4,7 @@
 
 What does the "Zombie Zoom 5K", the "Wibbly wobbly log jog", and the "Turkey Trot" have in common?
 They're runs with a fun name! The `fun_run` library adds display and safety features to make
-running with Rust's [`Command`](https://doc.rust-lang.org/stable/std/process/struct.Command.html)-s better for you and your users.
+running a Rust [`Command`](https://doc.rust-lang.org/stable/std/process/struct.Command.html) better for you and your users.
 
 Stream the command and raise on non-zero exit:
 
