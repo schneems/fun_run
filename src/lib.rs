@@ -68,6 +68,15 @@
 //! );
 //! ```
 //!
+//! ## Nightly-only items
+//!
+//! A few items (`display_env_keys` and `CommandWithName::named_keys`) require a
+//! nightly toolchain. They depend on the unstable
+//! [`command_resolved_envs`](https://github.com/rust-lang/rust/issues/149070)
+//! feature, auto-detected at build time, and are absent on stable. Because
+//! <https://docs.rs> builds on nightly, these appear in the published docs even
+//! though stable users cannot use them.
+//!
 //! ## Install
 //!
 //! ```shell
@@ -322,6 +331,11 @@ pub trait CommandWithName {
 
     /// Adds given environment variables to the command's name
     ///
+    /// **Note:** Requires a nightly toolchain. This method relies on the unstable
+    /// [`command_resolved_envs`](https://github.com/rust-lang/rust/issues/149070)
+    /// feature, which is auto-detected at build time. On a stable toolchain it does
+    /// not exist, so calling it (or referring to it) will not compile.
+    ///
     /// Useful for showing usage of a command that uses environment variables for configuration.
     ///
     /// ## Example
@@ -375,7 +389,7 @@ pub trait CommandWithName {
     ///
     /// This function is NOT (currently) idempotent. Calling it twice will prepend
     /// the same environment variable twice. This behavior might change in the future (such that
-    /// under some conditions is becomes idempotent). Therefore you shouldn't consider this warning
+    /// under some conditions it becomes idempotent). Therefore you shouldn't consider this warning
     /// a stability guarantee.
     #[cfg(command_resolved_envs)]
     #[allow(clippy::needless_lifetimes)]
@@ -853,6 +867,11 @@ pub fn display(command: &mut Command) -> String {
 }
 
 /// Converts a command, and specified environment variables to user readable string
+///
+/// **Note:** Requires a nightly toolchain. This function relies on the unstable
+/// [`command_resolved_envs`](https://github.com/rust-lang/rust/issues/149070)
+/// feature, which is auto-detected at build time. On a stable toolchain it does
+/// not exist, so calling it (or referring to it) will not compile.
 ///
 /// Useful for showing usage of a command that uses environment variables for configuration.
 ///

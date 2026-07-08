@@ -60,6 +60,15 @@ assert!(
 );
 ```
 
+## Nightly-only items
+
+A few items (`display_env_keys` and `CommandWithName::named_keys`) require a
+nightly toolchain. They depend on the unstable
+[`command_resolved_envs`](https://github.com/rust-lang/rust/issues/149070)
+feature, auto-detected at build time, and are absent on stable. Because
+<https://docs.rs> builds on nightly, these appear in the published docs even
+though stable users cannot use them.
+
 ## Install
 
 ```shell
