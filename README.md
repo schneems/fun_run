@@ -108,7 +108,7 @@ assert_eq!(r#"RAILS_ENV="production" bundle install"#, renamed_cmd.name())
 ## What won't it do?
 
 The `fun_run` library doesn't support executing a [`Command`](https://doc.rust-lang.org/stable/std/process/struct.Command.html) in ways that do not produce an
-[`Output`](https://doc.rust-lang.org/stable/std/process/struct.Output.html), for example calling [`Command::spawn`] returns a [`std::process::Child`](https://doc.rust-lang.org/stable/std/process/struct.Child.html)
+[`Output`](https://doc.rust-lang.org/stable/std/process/struct.Output.html), for example calling [`Command::spawn`](https://doc.rust-lang.org/std/process/struct.Command.html#method.spawn) returns a [`std::process::Child`](https://doc.rust-lang.org/stable/std/process/struct.Child.html)
 (Which doesn't contain an [`Output`](https://doc.rust-lang.org/stable/std/process/struct.Output.html)). If you want to run-for-fun in the background, spawn a thread
 and join it manually:
 

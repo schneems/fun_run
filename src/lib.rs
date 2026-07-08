@@ -117,7 +117,7 @@
 //! ## What won't it do?
 //!
 //! The `fun_run` library doesn't support executing a [`Command`] in ways that do not produce an
-//! [`Output`], for example calling [`Command::spawn`] returns a [`std::process::Child`]
+//! [`Output`], for example calling [`Command::spawn`](https://doc.rust-lang.org/std/process/struct.Command.html#method.spawn) returns a [`std::process::Child`]
 //! (Which doesn't contain an [`Output`]). If you want to run-for-fun in the background, spawn a thread
 //! and join it manually:
 //!
