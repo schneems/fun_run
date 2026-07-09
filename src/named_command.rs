@@ -3,7 +3,7 @@
 //! - [`NamedCommand`] struct for holding a command and a name
 //! - [`CommandWithName`] trait extension
 
-use crate::command::output_and_write_streams;
+use crate::functions::output_and_write_streams;
 use crate::{CmdError, NamedOutput, OutputWithName};
 use std::io::Write;
 use std::process::Command;
