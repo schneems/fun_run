@@ -220,4 +220,12 @@ mod tests {
             status_from_error(&Error::from(ErrorKind::Other)).code()
         );
     }
+
+    #[test]
+    fn test_status_from_code() {
+        for code in 0..=255 {
+            let status = ExitStatus::from_code(code);
+            assert_eq!(Some(code as i32), status.code());
+        }
+    }
 }
