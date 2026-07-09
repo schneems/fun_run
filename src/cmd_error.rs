@@ -6,6 +6,9 @@ use crate::OutputWithName;
 use std::fmt::Display;
 use std::process::{ExitStatus, Output};
 
+#[cfg(doc)]
+use std::process::Command;
+
 /// Who says ([`Command`]) errors can't be fun?
 ///
 /// Fun run errors include all the info a user needs to debug, like

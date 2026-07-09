@@ -118,7 +118,7 @@ where
     display_name_with_env_keys(cmd.name(), env, keys)
 }
 
-fn display_name_with_env_keys<E, K, V, I, O>(name: String, env: E, keys: I) -> String
+pub(crate) fn display_name_with_env_keys<E, K, V, I, O>(name: String, env: E, keys: I) -> String
 where
     E: IntoIterator<Item = (K, V)>,
     K: Into<OsString>,

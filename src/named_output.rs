@@ -4,6 +4,9 @@
 use crate::CmdError;
 use std::process::{ExitStatus, Output};
 
+#[cfg(doc)]
+use crate::ExitStatusFromCode;
+
 /// Holds an [`Output`] of a command's execution along with its "name"
 ///
 /// When paired with [`CmdError`] a `Result<NamedOutput, CmdError>` will retain the

@@ -165,8 +165,12 @@ pub trait CommandWithName {
     fn named_env_vars<'a, T, K>(&'a mut self, keys: T) -> NamedCommand<'a>
     where
         T: IntoIterator<Item = K>,
-        K: Into<OsString>,
+        K: Into<std::ffi::OsString>,
     {
+        use crate::functions::display_name_with_env_keys;
+        use std::collections::HashMap;
+        use std::ffi::OsString;
+
         let old = self.name();
         let cmd = self.mut_cmd();
         let name = display_name_with_env_keys(

@@ -229,6 +229,9 @@
 //! <https://docs.rs> builds on nightly, these appear in the published docs even
 //! though stable users cannot use them.
 
+#[cfg(doc)]
+use std::process::{Command, Output};
+
 mod cmd_error;
 mod exit_status;
 mod functions;
@@ -257,6 +260,10 @@ mod tests {
     #[test]
     #[cfg(command_resolved_envs)]
     fn get_resolved_envs_detects_nightly_feature() {
+        use std::collections::HashMap;
+        use std::ffi::{OsStr, OsString};
+        use std::process::Command;
+
         let mut cmd = Command::new("does-not-run");
         cmd.env("FUN_RUN_TEST_VAR", "1");
         let resolved: HashMap<OsString, OsString> = cmd.get_resolved_envs().collect();
