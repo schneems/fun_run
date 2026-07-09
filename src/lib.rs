@@ -234,6 +234,7 @@ mod exit_status;
 mod functions;
 mod named_command;
 mod named_output;
+#[cfg(feature = "which_problem")]
 mod which_problem;
 
 pub use cmd_error::CmdError;
