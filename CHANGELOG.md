@@ -1,5 +1,7 @@
 ## Unreleased
 
+## 0.8.0
+
 - Introduce `CmdError::output` for easy retrieval of the named output if the command ran.
 - Introduce `fun_run::display_env_vars()` (for nightly users). This pulls environment variables from the command (using a nightly feature) and provides a better interface than `fun_run::display_with_env_keys` (which requires externally inserted environment variables). If this feature is stabilized in Rust then `display_with_env_keys` will be deprecated.
 - Introduce `named_env_vars` function to the `CommandWithName` trait (for nightly users). This function helps decorating a command's name with the given environment variable keys.
