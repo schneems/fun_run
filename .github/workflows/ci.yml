@@ -86,6 +86,27 @@ jobs:
       - name: Build and test on MSRV
         run: cargo +1.87 test --all-features
 
+  nightly-test:
+    runs-on: ubuntu-26.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+      - name: Install nightly toolchain
+        run: rustup toolchain install nightly --profile minimal
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v2.9.1
+      - name: Run unit tests on nightly
+        # GitHub's default bash runs with `-o pipefail`, so a cargo failure
+        # (including the gated test failing to compile) still fails this step.
+        run: cargo +nightly test --all-features 2>&1 | tee nightly-test-output.txt
+      - name: Ensure the command_resolved_envs feature was actually exercised
+        # Guards against the build.rs probe silently failing: if detection breaks,
+        # the gated test compiles out, this line is absent, and CI goes red.
+        # Coupled to the test name in src/lib.rs (update both together).
+        run: |
+          grep -q 'get_resolved_envs_detects_nightly_feature ... ok' nightly-test-output.txt \
+            || { echo "::error::command_resolved_envs gated test did not run; feature detection may be broken or the feature changed"; exit 1; }
+
   readme-updated:
     runs-on: ubuntu-26.04
     steps:

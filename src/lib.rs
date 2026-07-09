@@ -1,3 +1,4 @@
+#![cfg_attr(command_resolved_envs, feature(command_resolved_envs))]
 //! # Fun Run
 //!
 //! What does the "Zombie Zoom 5K", the "Wibbly wobbly log jog", and the "Turkey Trot" have in common?
@@ -218,10 +219,20 @@
 //!
 //! Note that `which_problem` integration is not enabled by default because it outputs information
 //! about the contents of your disk such as layout and file permissions.
+//!
+//! ## Nightly-only items
+//!
+//! A few items (`display_env_vars` and `CommandWithName::named_env_vars`) require a
+//! nightly toolchain. They depend on the unstable
+//! [`command_resolved_envs`](https://github.com/rust-lang/rust/issues/149070)
+//! feature, auto-detected at build time, and are absent on stable. Because
+//! <https://docs.rs> builds on nightly, these appear in the published docs even
+//! though stable users cannot use them.
 
 use command::output_and_write_streams;
 use regex::Regex;
-use std::ffi::OsString;
+use std::collections::HashMap;
+use std::ffi::{OsStr, OsString};
 use std::fmt::Display;
 use std::io::Write;
 use std::process::Command;
@@ -315,6 +326,91 @@ pub trait CommandWithName {
     fn named_fn<'a>(&'a mut self, f: impl FnOnce(&mut Command) -> String) -> NamedCommand<'a> {
         let cmd = self.mut_cmd();
         let name = f(cmd);
+        self.named(name)
+    }
+
+    /// Adds given environment variables to the command's name
+    ///
+    /// Takes an environment variable **key** and if it will be used when the command runs
+    /// prepends the `<key>=<value>` pair to the front of the command.
+    ///
+    /// **Warning:** By default a [`Command`] will inherit environment variables from the parent process.
+    /// Limit environment variables to non-sensitive keys or use [`Command::env_clear`] and explicitly
+    /// [`Command::envs`] to set only what you need.
+    ///
+    /// **Note:** Requires a nightly toolchain. This method relies on the unstable
+    /// [`command_resolved_envs`](https://github.com/rust-lang/rust/issues/149070)
+    /// feature, which is auto-detected at build time. On a stable toolchain it does
+    /// not exist, so calling it (or referring to it) will not compile.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use fun_run::CommandWithName;
+    ///
+    /// let mut command = std::process::Command::new("bundle");
+    /// command
+    ///     .arg("install")
+    ///     .env("BUNDLE_WITHOUT", "development:test");
+    ///
+    /// let mut cmd = command.named_env_vars(["BUNDLE_WITHOUT"]);
+    /// assert_eq!(
+    ///     r#"BUNDLE_WITHOUT="development:test" bundle install"#,
+    ///     cmd.name()
+    /// );
+    /// ```
+    ///
+    /// Preserves prior re-naming:
+    ///
+    /// ```
+    /// use fun_run::CommandWithName;
+    ///
+    /// let mut command = std::process::Command::new("bundle");
+    /// command
+    ///     .arg("install")
+    ///     .envs([
+    ///         ("BUNDLE_WITHOUT", "development:test"),
+    ///         ("BUNDLE_PATH", "vendor/bundle")
+    ///     ]);
+    ///
+    /// let mut cmd = command.named("./bin/bundle install");
+    /// let mut cmd = cmd.named_env_vars(["BUNDLE_WITHOUT"]);
+    ///
+    /// assert_eq!(
+    ///     r#"BUNDLE_WITHOUT="development:test" ./bin/bundle install"#,
+    ///     cmd.name()
+    /// );
+    ///
+    /// let mut cmd = cmd.named_env_vars(["BUNDLE_PATH"]);
+    /// assert_eq!(
+    ///     r#"BUNDLE_PATH="vendor/bundle" BUNDLE_WITHOUT="development:test" ./bin/bundle install"#,
+    ///     cmd.name()
+    /// );
+    /// ```
+    ///
+    /// Re-naming a command that previously had an environment variable prepended will NOT
+    /// preserve the environment variables.
+    ///
+    /// This function is NOT (currently) idempotent. Calling it twice will prepend
+    /// the same environment variable twice. This behavior might change in the future (such that
+    /// under some conditions it becomes idempotent). Therefore you shouldn't consider this warning
+    /// a stability guarantee.
+    #[cfg(command_resolved_envs)]
+    #[allow(clippy::needless_lifetimes)]
+    #[must_use]
+    fn named_env_vars<'a, T, K>(&'a mut self, keys: T) -> NamedCommand<'a>
+    where
+        T: IntoIterator<Item = K>,
+        K: Into<OsString>,
+    {
+        let old = self.name();
+        let cmd = self.mut_cmd();
+        let name = display_name_with_env_keys(
+            old,
+            cmd.get_resolved_envs()
+                .collect::<HashMap<OsString, OsString>>(),
+            keys,
+        );
         self.named(name)
     }
 
@@ -751,7 +847,7 @@ static QUOTE_ARG_RE: LazyLock<Regex> =
 
 /// Converts a command and its arguments into a user readable string
 ///
-/// Example
+/// # Examples
 ///
 /// ```rust
 /// use std::process::Command;
@@ -764,25 +860,64 @@ static QUOTE_ARG_RE: LazyLock<Regex> =
 pub fn display(command: &mut Command) -> String {
     vec![command.get_program().to_string_lossy().to_string()]
         .into_iter()
-        .chain(
-            command
-                .get_args()
-                .map(std::ffi::OsStr::to_string_lossy)
-                .map(|arg| {
-                    if QUOTE_ARG_RE.is_match(&arg) {
-                        format!("{arg:?}")
-                    } else {
-                        format!("{arg}")
-                    }
-                }),
-        )
+        .chain(command.get_args().map(OsStr::to_string_lossy).map(|arg| {
+            if QUOTE_ARG_RE.is_match(&arg) {
+                format!("{arg:?}")
+            } else {
+                format!("{arg}")
+            }
+        }))
         .collect::<Vec<String>>()
         .join(" ")
 }
 
+/// Converts a command, and specified environment variables to user readable string
+///
+/// Takes an environment variable **key** and if it will be used when the command runs
+/// prepends the `<key>=<value>` pair to the front of the command.
+///
+/// **Warning:** By default a [`Command`] will inherit environment variables from the parent process.
+/// Limit environment variables to non-sensitive keys or use [`Command::env_clear`] and explicitly
+/// [`Command::envs`] to set only what you need.
+///
+/// This safer alternative to [`display_with_env_keys`] resolves environment variables from
+/// [`Command::get_resolved_envs`]. That function will automatically account for
+/// inherited environment variables and any env modifications such as [`Command::env_clear`]
+/// or [`Command::env_remove`].
+///
+/// **Note:** Requires a nightly toolchain. This function relies on the unstable
+/// [`command_resolved_envs`](https://github.com/rust-lang/rust/issues/149070)
+/// feature, which is auto-detected at build time. On a stable toolchain it does
+/// not exist, so calling it (or referring to it) will not compile.
+///
+/// # Examples
+///
+/// ```rust
+/// use std::process::Command;
+/// use fun_run;
+///
+/// let mut command = Command::new("bundle");
+/// command.arg("install").envs([("RAILS_ENV", "production")]);
+///
+/// let name = fun_run::display_env_vars(&mut command, ["RAILS_ENV"]);
+/// assert_eq!(String::from(r#"RAILS_ENV="production" bundle install"#), name);
+/// ```
+#[cfg(command_resolved_envs)]
+#[must_use]
+pub fn display_env_vars<T, K>(cmd: &mut Command, keys: T) -> String
+where
+    T: IntoIterator<Item = K>,
+    K: Into<OsString>,
+{
+    let env: HashMap<OsString, OsString> = cmd.get_resolved_envs().collect();
+    display_with_env_keys(cmd, env, keys)
+}
+
 /// Converts a command, arguments, and specified environment variables to user readable string
 ///
-/// Example
+/// Useful for showing usage of a command that uses environment variables for configuration.
+///
+/// # Examples
 ///
 /// ```rust
 /// use std::process::Command;
@@ -798,8 +933,25 @@ pub fn display(command: &mut Command) -> String {
 /// let name = fun_run::display_with_env_keys(&mut command, &env, ["RAILS_ENV"]);
 /// assert_eq!(String::from(r#"RAILS_ENV="production" bundle install"#), name);
 /// ```
+///
+/// There's no guarantee that the env provided was passed to construct the Command.
+/// A [`Command`] can also inherit environment variables from the parent.
+///
+/// Note that [`Command::env_clear`] and [`Command::env_remove`] both change the Command's
+/// env var inheritance behavior.
 #[must_use]
 pub fn display_with_env_keys<E, K, V, I, O>(cmd: &mut Command, env: E, keys: I) -> String
+where
+    E: IntoIterator<Item = (K, V)>,
+    K: Into<OsString>,
+    V: Into<OsString>,
+    I: IntoIterator<Item = O>,
+    O: Into<OsString>,
+{
+    display_name_with_env_keys(cmd.name(), env, keys)
+}
+
+fn display_name_with_env_keys<E, K, V, I, O>(name: String, env: E, keys: I) -> String
 where
     E: IntoIterator<Item = (K, V)>,
     K: Into<OsString>,
@@ -810,7 +962,7 @@ where
     let env = env
         .into_iter()
         .map(|(k, v)| (k.into(), v.into()))
-        .collect::<std::collections::HashMap<OsString, OsString>>();
+        .collect::<HashMap<OsString, OsString>>();
 
     keys.into_iter()
         .map(|key| {
@@ -821,7 +973,7 @@ where
                 env.get(&key).cloned().unwrap_or_else(|| OsString::from(""))
             )
         })
-        .chain([display(cmd)])
+        .chain([name])
         .collect::<Vec<String>>()
         .join(" ")
 }
@@ -1291,6 +1443,19 @@ impl std::error::Error for IoErrorAnnotation {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // Nightly CI greps for this test name; update ci.yml if you rename it.
+    #[test]
+    #[cfg(command_resolved_envs)]
+    fn get_resolved_envs_detects_nightly_feature() {
+        let mut cmd = Command::new("does-not-run");
+        cmd.env("FUN_RUN_TEST_VAR", "1");
+        let resolved: HashMap<OsString, OsString> = cmd.get_resolved_envs().collect();
+        assert_eq!(
+            resolved.get(OsStr::new("FUN_RUN_TEST_VAR")),
+            Some(&OsString::from("1"))
+        );
+    }
 
     #[test]
     fn test_status_from_code() {
