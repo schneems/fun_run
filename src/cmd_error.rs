@@ -2,6 +2,7 @@
 
 use crate::exit_status;
 use crate::NamedOutput;
+use crate::OutputWithName;
 use std::fmt::Display;
 use std::process::{ExitStatus, Output};
 
@@ -57,16 +58,16 @@ impl Display for CmdError {
                 write!(f, "Could not run command `{name}`. {error}")
             }
             CmdError::NonZeroExitNotStreamed(named_output) => {
-                let stdout = display_out_or_empty(&named_output.output.stdout);
-                let stderr = display_out_or_empty(&named_output.output.stderr);
+                let stdout = display_out_or_empty(&named_output.output().stdout);
+                let stderr = display_out_or_empty(&named_output.output().stderr);
 
                 writeln!(f, "Command failed `{name}`", name = named_output.name())?;
                 writeln!(
                     f,
                     "exit status: {status}",
-                    status = exit_status::bashify(&named_output.output.status)
+                    status = exit_status::bashify(&named_output.output().status)
                 )?;
-                if let Some(signal_line) = exit_status::signal_line(&named_output.output.status) {
+                if let Some(signal_line) = exit_status::signal_line(&named_output.output().status) {
                     writeln!(f, "{signal_line}")?;
                 }
                 writeln!(f, "stdout: {stdout}",)?;
@@ -77,9 +78,9 @@ impl Display for CmdError {
                 writeln!(
                     f,
                     "exit status: {status}",
-                    status = exit_status::bashify(&named_output.output.status)
+                    status = exit_status::bashify(&named_output.output().status)
                 )?;
-                if let Some(signal_line) = exit_status::signal_line(&named_output.output.status) {
+                if let Some(signal_line) = exit_status::signal_line(&named_output.output().status) {
                     writeln!(f, "{signal_line}")?;
                 }
                 writeln!(f, "stdout: <see above>")?;
@@ -121,7 +122,7 @@ impl CmdError {
         match self {
             CmdError::SystemError(name, _) => name.into(),
             CmdError::NonZeroExitNotStreamed(out) | CmdError::NonZeroExitAlreadyStreamed(out) => {
-                out.name.as_str().into()
+                out.name().into()
             }
         }
     }
@@ -180,14 +181,12 @@ impl From<CmdError> for NamedOutput {
     /// is that it will be non-zero.
     fn from(value: CmdError) -> Self {
         match value {
-            CmdError::SystemError(name, error) => NamedOutput {
-                name,
-                output: Output {
-                    status: exit_status::status_from_error(&error),
-                    stdout: Vec::new(),
-                    stderr: error.to_string().into_bytes(),
-                },
-            },
+            CmdError::SystemError(name, error) => Output {
+                status: exit_status::status_from_error(&error),
+                stdout: Vec::new(),
+                stderr: error.to_string().into_bytes(),
+            }
+            .named(name),
             CmdError::NonZeroExitNotStreamed(named)
             | CmdError::NonZeroExitAlreadyStreamed(named) => named,
         }
