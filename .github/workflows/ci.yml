@@ -90,7 +90,7 @@ jobs:
     runs-on: ubuntu-26.04
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - name: Install nightly toolchain
         run: rustup toolchain install nightly --profile minimal
       - name: Rust Cache
