@@ -314,4 +314,34 @@ mod test {
 
         assert_str_eq!(&String::from_utf8_lossy(&stderr_buf), "Hello World!");
     }
+
+    #[test]
+    fn test_flag_equals_value_display() {
+        let mut cmd = Command::new("npm");
+        cmd.args(["prune", "--omit=dev", "--include=prod"]);
+
+        assert_str_eq!(
+            &display(&mut cmd),
+            "npm prune \"--omit=dev\" \"--include=prod\""
+        );
+    }
+
+    #[test]
+    fn test_dotnet_display() {
+        let mut cmd = Command::new("dotnet");
+        cmd.args([
+            "publish",
+            "/workspace/foo.csproj",
+            "--runtime",
+            "linux-x64",
+            "-p:PublishDir=bin/publish",
+            "--verbosity",
+            "normal",
+        ]);
+
+        assert_str_eq!(
+            &display(&mut cmd),
+            "dotnet publish /workspace/foo.csproj --runtime linux-x64 \"-p:PublishDir=bin/publish\" --verbosity normal"
+        );
+    }
 }
