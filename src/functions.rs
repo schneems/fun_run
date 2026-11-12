@@ -344,4 +344,12 @@ mod test {
             "dotnet publish /workspace/foo.csproj --runtime linux-x64 \"-p:PublishDir=bin/publish\" --verbosity normal"
         );
     }
+
+    #[test]
+    fn test_space_display() {
+        let mut cmd = Command::new("cd");
+        cmd.arg("/path/to/dir with spaces/here");
+
+        assert_str_eq!(&display(&mut cmd), r#"cd "/path/to/dir with spaces/here""#);
+    }
 }
