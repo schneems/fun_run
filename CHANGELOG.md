@@ -1,5 +1,7 @@
 ## Unreleased
 
+- Raise the minimum supported Rust version (MSRV) from 1.87 to 1.90. The optional `which_problem` dependency resolves `ordered-float` 5.5, which requires 1.90.
+
 ## 0.8.0
 
 - Introduce `CmdError::output` for easy retrieval of the named output if the command ran.
