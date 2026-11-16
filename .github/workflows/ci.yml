@@ -6,6 +6,9 @@ on:
     branches:
       - main
   pull_request:
+  schedule:
+    # Mondays at 14:17 UTC
+    - cron: "17 14 * * 1"
 
 jobs:
   check_publishable:
@@ -80,11 +83,11 @@ jobs:
         # Pinned to the `rust-version` declared in Cargo.toml. Unlike the other
         # jobs (which `rustup update` to latest stable), this enforces the MSRV
         # and catches code that silently raises the floor.
-        run: rustup toolchain install 1.87 --profile minimal
+        run: rustup toolchain install 1.90 --profile minimal
       - name: Rust Cache
         uses: Swatinem/rust-cache@v2.9.1
       - name: Build and test on MSRV
-        run: cargo +1.87 test --all-features
+        run: cargo +1.90 test --all-features
 
   nightly-test:
     runs-on: ubuntu-26.04
