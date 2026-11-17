@@ -1,5 +1,6 @@
 ## Unreleased
 
+- Stop quoting `=`: Quoting arguments with `=` produced odd results. For example: `npm prune "--omit=dev" "--include=prod"`. Now the output looks better `npm prune --omit=dev --include=prod`.
 - Raise the minimum supported Rust version (MSRV) from 1.87 to 1.90. The optional `which_problem` dependency resolves `ordered-float` 5.5, which requires 1.90.
 
 ## 0.8.0

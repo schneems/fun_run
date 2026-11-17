@@ -8,9 +8,10 @@ use std::sync::LazyLock;
 use std::{io, process, thread};
 use std::{mem, panic};
 
-// https://github.com/jimmycuadra/rust-shellwords/blob/d23b853a850ceec358a4137d5e520b067ddb7abc/src/lib.rs#L23
+// Originally from <https://github.com/jimmycuadra/rust-shellwords/blob/d23b853a850ceec358a4137d5e520b067ddb7abc/src/lib.rs#L23>
+// We use this for copy/paste compatibility rather than strict shell escaping for safety.
 static QUOTE_ARG_RE: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"([^A-Za-z0-9_\-.,:/@\n])").expect("clippy checked"));
+    LazyLock::new(|| Regex::new(r"([^A-Za-z0-9_\-.,:/@=\n])").expect("clippy checked"));
 
 /// Converts a command and its arguments into a user readable string
 ///
@@ -336,10 +337,7 @@ mod test {
         let mut cmd = Command::new("npm");
         cmd.args(["prune", "--omit=dev", "--include=prod"]);
 
-        assert_str_eq!(
-            &display(&mut cmd),
-            "npm prune \"--omit=dev\" \"--include=prod\""
-        );
+        assert_str_eq!(&display(&mut cmd), "npm prune --omit=dev --include=prod");
     }
 
     #[test]
@@ -357,7 +355,7 @@ mod test {
 
         assert_str_eq!(
             &display(&mut cmd),
-            "dotnet publish /workspace/foo.csproj --runtime linux-x64 \"-p:PublishDir=bin/publish\" --verbosity normal"
+            "dotnet publish /workspace/foo.csproj --runtime linux-x64 -p:PublishDir=bin/publish --verbosity normal"
         );
     }
 
