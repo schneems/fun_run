@@ -14,15 +14,31 @@ static QUOTE_ARG_RE: LazyLock<Regex> =
 
 /// Converts a command and its arguments into a user readable string
 ///
-/// # Examples
-///
 /// ```rust
 /// use std::process::Command;
 /// use fun_run;
 ///
 /// let name = fun_run::display(Command::new("bundle").arg("install"));
-/// assert_eq!(String::from("bundle install"), name);
+/// assert_eq!(&name, "bundle install");
 /// ```
+///
+/// The output attempts to produce a command that is copy/paste-able to achieve similar behavior for
+/// the end user if they try to run it on bash or zsh. For example, if a space is used in
+/// an argument, it must be quoted to prevent it being treated as multiple arguments when copied
+/// and pasted into a different terminal.
+///
+/// ```rust
+/// use std::process::Command;
+/// use fun_run;
+///
+/// assert_eq!(
+///     &fun_run::display(Command::new("cd").arg("/path/to/dir with spaces/quoted")),
+///     r#"cd "/path/to/dir with spaces/quoted""#
+/// );
+/// ```
+///
+/// This behavior currently prioritizes bash and zsh. We recommend integration testing
+/// any application-critical display representation.
 #[must_use]
 pub fn display(command: &mut Command) -> String {
     vec![command.get_program().to_string_lossy().to_string()]
