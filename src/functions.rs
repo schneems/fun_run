@@ -8,21 +8,38 @@ use std::sync::LazyLock;
 use std::{io, process, thread};
 use std::{mem, panic};
 
-// https://github.com/jimmycuadra/rust-shellwords/blob/d23b853a850ceec358a4137d5e520b067ddb7abc/src/lib.rs#L23
+// Originally from <https://github.com/jimmycuadra/rust-shellwords/blob/d23b853a850ceec358a4137d5e520b067ddb7abc/src/lib.rs#L23>
+// We use this for copy/paste compatibility rather than strict shell escaping for safety.
 static QUOTE_ARG_RE: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"([^A-Za-z0-9_\-.,:/@\n])").expect("clippy checked"));
+    LazyLock::new(|| Regex::new(r"([^A-Za-z0-9_\-.,:/@=\n])").expect("clippy checked"));
 
 /// Converts a command and its arguments into a user readable string
-///
-/// # Examples
 ///
 /// ```rust
 /// use std::process::Command;
 /// use fun_run;
 ///
 /// let name = fun_run::display(Command::new("bundle").arg("install"));
-/// assert_eq!(String::from("bundle install"), name);
+/// assert_eq!(&name, "bundle install");
 /// ```
+///
+/// The output attempts to produce a command that is copy/paste-able to achieve similar behavior for
+/// the end user if they try to run it on bash or zsh. For example, if a space is used in
+/// an argument, it must be quoted to prevent it being treated as multiple arguments when copied
+/// and pasted into a different terminal.
+///
+/// ```rust
+/// use std::process::Command;
+/// use fun_run;
+///
+/// assert_eq!(
+///     &fun_run::display(Command::new("cd").arg("/path/to/dir with spaces/quoted")),
+///     r#"cd "/path/to/dir with spaces/quoted""#
+/// );
+/// ```
+///
+/// This behavior currently prioritizes bash and zsh. We recommend integration testing
+/// any application-critical display representation.
 #[must_use]
 pub fn display(command: &mut Command) -> String {
     vec![command.get_program().to_string_lossy().to_string()]
@@ -313,5 +330,40 @@ mod test {
         let _ = output_and_write_streams(&mut cmd, &mut stdout_buf, &mut stderr_buf).unwrap();
 
         assert_str_eq!(&String::from_utf8_lossy(&stderr_buf), "Hello World!");
+    }
+
+    #[test]
+    fn test_flag_equals_value_display() {
+        let mut cmd = Command::new("npm");
+        cmd.args(["prune", "--omit=dev", "--include=prod"]);
+
+        assert_str_eq!(&display(&mut cmd), "npm prune --omit=dev --include=prod");
+    }
+
+    #[test]
+    fn test_dotnet_display() {
+        let mut cmd = Command::new("dotnet");
+        cmd.args([
+            "publish",
+            "/workspace/foo.csproj",
+            "--runtime",
+            "linux-x64",
+            "-p:PublishDir=bin/publish",
+            "--verbosity",
+            "normal",
+        ]);
+
+        assert_str_eq!(
+            &display(&mut cmd),
+            "dotnet publish /workspace/foo.csproj --runtime linux-x64 -p:PublishDir=bin/publish --verbosity normal"
+        );
+    }
+
+    #[test]
+    fn test_space_display() {
+        let mut cmd = Command::new("cd");
+        cmd.arg("/path/to/dir with spaces/here");
+
+        assert_str_eq!(&display(&mut cmd), r#"cd "/path/to/dir with spaces/here""#);
     }
 }
